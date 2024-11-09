@@ -1,5 +1,7 @@
 from django.contrib import admin
-from .models import Restaurant, Promo, Menu, RestaurantImage, AddonCategory, AddonOption, Category
+from .models import Restaurant, Promo, Menu, RestaurantImage, AddonCategory, AddonOption, Category, UserProfile
+from django.contrib.auth.models import User
+from django.contrib.auth.admin import UserAdmin
 from django.contrib.gis.db import models as geo_models
 from mapwidgets.widgets import MapboxPointFieldWidget
 
@@ -90,3 +92,24 @@ class AddonCategoryAdmin(admin.ModelAdmin):
 
 # Register Promo admin separately
 admin.site.register(Promo, PromoAdmin)
+
+class UserProfileInline(admin.StackedInline):
+    model = UserProfile
+    can_delete = False
+    verbose_name_plural = 'User Profile'
+    fields = ['email', 'type_of_user', 'phone', 'address', 'city', 'image']
+
+# Define a new User admin
+class CustomUserAdmin(UserAdmin):
+    inlines = (UserProfileInline,)
+
+    # Display email and type of user in user list
+    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'get_type_of_user')
+    
+    def get_type_of_user(self, obj):
+        return obj.profile.type_of_user
+    get_type_of_user.short_description = 'User Type'
+
+# Re-register UserAdmin
+admin.site.unregister(User)
+admin.site.register(User, CustomUserAdmin)

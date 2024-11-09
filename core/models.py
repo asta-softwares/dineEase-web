@@ -4,6 +4,10 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models as gis_models
 from .constants import CANADA_PROVINCE_CHOICES
+from rest_framework.authtoken.models import Token
+from django.utils import timezone
+from datetime import timedelta
+from django.conf import settings
 
 class Category(models.Model):
     CATEGORY_TYPES = (
@@ -170,14 +174,35 @@ class RestaurantImage(models.Model):
             return "Unassigned image"
     
 class UserProfile(models.Model):
+    USER_TYPES = [
+        ('restaurant_owner', 'Restaurant Owner'),
+        ('customer', 'Customer'),
+        ('admin', 'Admin'),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    email = models.EmailField(unique=True, null=True, blank=True)
+    type_of_user = models.CharField(max_length=20, choices=USER_TYPES, default='customer')
     phone = models.CharField(max_length=15, unique=True)
     address = models.CharField(max_length=255)
     city = models.CharField(max_length=100)
-    picture = models.ImageField(upload_to='user_pictures/', blank=True)
-    coordinates = models.CharField(max_length=255, blank=True)  # Optional
-
+    image = models.ImageField(upload_to='user_pictures/', blank=True)
+    
     def __str__(self):
         return self.user.username
     
+class ExpiringToken(Token):
+    class Meta:
+        proxy = True  # Use this model as a proxy to add additional methods without creating a new table
 
+    def has_expired(self):
+        expiration_date = self.created + timedelta(hours=24)  # Set the token validity duration here
+        return timezone.now() > expiration_date
+
+    @classmethod
+    def get_or_create(cls, user):
+        token, created = cls.objects.get_or_create(user=user)
+        if not created and token.has_expired():
+            token.delete()
+            token = cls.objects.create(user=user)
+        return token
