@@ -7,6 +7,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
+from rest_framework_simplejwt.tokens import RefreshToken
 
 class RestaurantViewSet(viewsets.ModelViewSet):
     serializer_class = RestaurantSerializer
@@ -68,33 +69,44 @@ class RegisterView(generics.CreateAPIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-class LoginView(generics.GenericAPIView):
+class LoginView(APIView):
     serializer_class = LoginSerializer
 
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         
-        # Create or retrieve an expiring token
-        token = ExpiringToken.get_or_create(user)
-        
+        # Create JWT tokens
+        refresh = RefreshToken.for_user(user)
+        access_token = refresh.access_token
+
         return Response({
-            'token': token.key,
+            'refresh': str(refresh),
+            'access': str(access_token),
             'user': {
                 'username': user.username,
                 'email': user.email,
                 'phone': user.profile.phone if hasattr(user, 'profile') else None
             }
         }, status=status.HTTP_200_OK)
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            # Delete the user's token to log them out
+            token = Token.objects.get(user=request.user)
+            token.delete()
+            return Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)
+        except Token.DoesNotExist:
+            return Response({"detail": "Token not found."}, status=status.HTTP_400_BAD_REQUEST)
     
 class UserDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
-        
-        print("USER", request.user)
         if request.user.is_authenticated:
             serializer = UserSerializer(request.user)
             return Response(serializer.data)
-        
-        # If the user is not authenticated, return a default response
         return Response({"message": "User not authenticated"}, status=401)

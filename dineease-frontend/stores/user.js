@@ -8,9 +8,9 @@ export const useUserStore = defineStore('user', () => {
   // Fetch user details after login or refresh
   const loadUser = async () => {
     try {
-      // const data = await fetchUser()
-      // console.log("USER DATA", data)
-      // user.value = data
+      const userData = await fetchUser()  // fetchUser now returns data.value directly
+      console.log("USER DATA", userData)
+      user.value = userData  // Assign userData directly to user.value
     } catch (error) {
       console.error('Error fetching user:', error)
       user.value = null

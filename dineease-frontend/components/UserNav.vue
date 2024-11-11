@@ -1,29 +1,10 @@
-<script setup lang="ts">
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-</script>
-
 <template>
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
       <Button variant="ghost" class="relative h-8 w-8 rounded-full">
         <Avatar class="h-8 w-8">
           <AvatarImage src="/avatars/01.png" alt="@shadcn" />
-          <AvatarFallback>SC</AvatarFallback>
+          <AvatarFallback>{{ initials }}</AvatarFallback>
         </Avatar>
       </Button>
     </DropdownMenuTrigger>
@@ -31,10 +12,10 @@ import {
       <DropdownMenuLabel class="font-normal flex">
         <div class="flex flex-col space-y-1">
           <p class="text-sm font-medium leading-none">
-            shadcn
+            {{ userStore.user.username }}
           </p>
           <p class="text-xs leading-none text-muted-foreground">
-            m@example.com
+            {{ userStore.user.email }}
           </p>
         </div>
       </DropdownMenuLabel>
@@ -55,10 +36,54 @@ import {
         <DropdownMenuItem>New Team</DropdownMenuItem>
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
-      <DropdownMenuItem>
+      <DropdownMenuItem @click="handleLogout">
         Log out
         <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
       </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
 </template>
+
+<script setup>
+import { computed } from 'vue'
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { useUserStore } from '@/stores/user'
+import { useAuthApi } from '@/composables/useAuthApi'
+
+const userStore = useUserStore()
+const router = useRouter()
+
+const { logout } = useAuthApi()
+
+// Calculate initials from user's first and last name
+const initials = computed(() => {
+  const firstName = userStore.user.first_name || ''
+  const lastName = userStore.user.last_name || ''
+  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+})
+
+// Method to handle logout
+const handleLogout = async () => {
+  try {
+    await logout() // Call the logout function from userStore
+    router.push('/login') // Redirect to login page or other route after logout
+  } catch (error) {
+    console.error("Logout failed:", error)
+  }
+}
+</script>
