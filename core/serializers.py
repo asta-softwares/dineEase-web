@@ -33,17 +33,46 @@ class AddonCategorySerializer(serializers.ModelSerializer):
         model = AddonCategory
         fields = ['id', 'name', 'required', 'max_selections', 'addon_options']
 
-class MenuSerializer(serializers.ModelSerializer):
-    addon_categories = AddonCategorySerializer(many=True, read_only=True)
-    images = RestaurantImageSerializer(many=True, read_only=True)  # Include images if you need to
-
-    class Meta:
-        model = Menu
-        fields = ['id', 'name', 'description', 'cost', 'category', 'status', 'image', 'priority_index', 'addon_categories', 'images']
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ['id', 'name', 'description', 'image']
+
+class MenuSerializer(serializers.ModelSerializer):
+    addon_categories = AddonCategorySerializer(many=True, read_only=True)
+    images = RestaurantImageSerializer(many=True, read_only=True)  # Include images if you need to
+    discounted_cost = serializers.SerializerMethodField()  # New field for discounted price
+
+    class Meta:
+        model = Menu
+        fields = [
+            'id', 'name', 'description', 'cost', 'category', 'status', 'image', 
+            'priority_index', 'addon_categories', 'images', 'discounted_cost'
+        ]
+
+    def get_discounted_cost(self, obj):
+        """
+        Calculate the discounted cost if a promo is applied to the menu.
+        """
+        # Get promos associated with the menu
+        promo = obj.promos.filter(status='active').order_by('-priority_index').first()
+
+        # If there's no active promo, return None (or original price if desired)
+        if not promo:
+            return None
+
+        # Calculate the discounted price
+        if promo.discount_type == 'percentage':
+            discount = obj.cost * (promo.discount / 100)
+        elif promo.discount_type == 'fixed':
+            discount = promo.discount
+        else:
+            discount = 0
+
+        # Ensure discounted price is not negative
+        discounted_price = max(obj.cost - discount, 0)
+
+        return round(discounted_price, 2)
 
 class RestaurantSerializer(serializers.ModelSerializer):
     promos = PromoSerializer(many=True, read_only=True)

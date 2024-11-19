@@ -1,8 +1,9 @@
 <template>
   <div class="w-full h-screen flex justify-center items-center">
     <Card class="w-[500px]">
-      <CardHeader class="space-y-1">
-        <CardTitle class="text-2xl">Login</CardTitle>
+      <CardHeader class="flex flex-col items-center space-y-1">
+        <img class="w-[100px]" src="/images/logo.svg" alt="DineEase Logo" />
+        <CardTitle class="text-2xl">Login to DineEase</CardTitle>
         <CardDescription>Enter your details below to log in</CardDescription>
       </CardHeader>
       <CardContent class="grid gap-4">
@@ -18,8 +19,18 @@
           {{ errorMessage }}
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter class="flex flex-col gap-y-4">
         <Button class="w-full" @click="handleLogin">Log in</Button>
+        <div class="relative">
+          <div class="absolute inset-0 flex items-center">
+            <span class="w-full border-t" />
+          </div>
+          <div class="relative flex justify-center text-xs uppercase">
+            <span class="bg-background px-2 text-muted-foreground">
+              Or continue with
+            </span>
+          </div>
+        </div>
       </CardFooter>
     </Card>
   </div>

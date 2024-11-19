@@ -55,7 +55,7 @@ class AddonOptionInline(admin.TabularInline):
 # Inline for addon categories (used in MenuAdmin)
 class AddonCategoryInline(admin.TabularInline):
     model = AddonCategory
-    extra = 1  # Display one extra blank form for categories
+    extra = 2  # Display one extra blank form for categories
     inlines = [AddonOptionInline]  # Allow adding options inside categories
 
     def get_inline_instances(self, request, obj=None):
@@ -65,10 +65,15 @@ class AddonCategoryInline(admin.TabularInline):
             inline_instances += [AddonOptionInline(self.model, self.admin_site)]
         return inline_instances
 
+class PromoInline(admin.TabularInline):
+    model = Promo
+    extra = 1
+    fields = ('name', 'description', 'discount', 'discount_type', 'status', 'restaurant', 'start_date', 'end_date')
+
 # Admin for Menu
 @admin.register(Menu)
 class MenuAdmin(admin.ModelAdmin):
-    inlines = [MenuImageInline, AddonCategoryInline]  # Add categories and options in MenuAdmin
+    inlines = [MenuImageInline, AddonCategoryInline, PromoInline]  # Add categories and options in MenuAdmin
     list_display = ('name', 'restaurant', 'cost', 'status')
     search_fields = ['name']
 

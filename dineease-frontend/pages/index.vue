@@ -11,7 +11,7 @@
   </div>
 
   <div class="hidden flex-col md:flex">
-    <div class="flex-1 space-y-4 p-8 pt-6">
+    <div class="flex-1 space-y-4 p-8 pt-6 max-w-screen-xl w-full mx-auto">
       <div class="flex items-center justify-between space-y-2">
         <h2 class="text-3xl font-bold tracking-tight">
           Dashboard
@@ -27,13 +27,16 @@
             Overview
           </TabsTrigger>
           <TabsTrigger value="analytics" disabled>
-            Analytics
+            Orders
           </TabsTrigger>
           <TabsTrigger value="reports" disabled>
-            Reports
+            Restaurants
           </TabsTrigger>
           <TabsTrigger value="notifications" disabled>
-            Notifications
+            Menu
+          </TabsTrigger>
+          <TabsTrigger value="notifications" disabled>
+            Promo
           </TabsTrigger>
         </TabsList>
         <TabsContent value="overview" class="space-y-4">
@@ -202,22 +205,72 @@ import TeamSwitcher from '@/components/TeamSwitcher.vue'
 import UserNav from '@/components/UserNav.vue'
 import CardItems from '@/components/CardItems.vue'
 import { useApiEndpoints } from '@/composables/useApiRestaurants.js'
+import { useOrderActions } from '~/composables/orderTest.js'
 
 const restaurants = ref([])
 const promos = ref([])
 const menus = ref([])
 const { fetchRestaurants, fetchPromos, fetchMenus } = useApiEndpoints()
+const { callCreateOrder, callUpdateOrderStatus, callUpdatePaymentStatus } = useOrderActions()
 
 // Fetch data when the component mounts
 onMounted(async () => {
+  await createNewOrder()
   try {
     promos.value = await fetchPromos()
     restaurants.value = await fetchRestaurants()
     menus.value = await fetchMenus()
+
+    console.log(restaurants.value)
   } catch (error) {
     console.error("Error fetching data:", error)
   }
 })
+
+async function createNewOrder() {
+  try {
+    const response = await callCreateOrder() 
+    console.log('Order Response:', response)
+  } catch (error) {
+    console.error('Failed to create order:', error)
+  }
+}
+
+async function acceptOrder(orderId) {
+  try {
+    const response = await callUpdateOrderStatus(orderId, 'accept')
+    console.log('Order Accepted:', response)
+  } catch (error) {
+    console.error('Failed to accept order:', error)
+  }
+}
+
+async function rejectOrder(orderId) {
+  try {
+    const response = await callUpdateOrderStatus(orderId, 'reject')
+    console.log('Order Rejected:', response)
+  } catch (error) {
+    console.error('Failed to reject order:', error)
+  }
+}
+
+async function completePayment(paymentId) {
+  try {
+    const response = await callUpdatePaymentStatus(paymentId, 'completed')
+    console.log('Payment Completed:', response)
+  } catch (error) {
+    console.error('Failed to complete payment:', error)
+  }
+}
+
+async function failPayment(paymentId) {
+  try {
+    const response = await callUpdatePaymentStatus(paymentId, 'failed')
+    console.log('Payment Failed:', response)
+  } catch (error) {
+    console.error('Failed to fail payment:', error)
+  }
+}
 
 
 </script>

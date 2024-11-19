@@ -1,5 +1,5 @@
 <template>
-    <div class="flex-1 flex flex-col gap-2 p-4 pt-0">
+    <div class="flex-1 flex flex-col gap-2 pt-0">
       <TransitionGroup name="list" appear>
         <button
           v-for="item in items"
@@ -58,6 +58,9 @@
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const props = defineProps({
   items: {

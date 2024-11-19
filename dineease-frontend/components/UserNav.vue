@@ -21,19 +21,16 @@
       </DropdownMenuLabel>
       <DropdownMenuSeparator />
       <DropdownMenuGroup>
-        <DropdownMenuItem>
-          Profile
-          <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
+        <DropdownMenuItem as="div">
+          <NuxtLink to="/profile" class="flex items-center space-x-2">
+            Profile
+          </NuxtLink>
         </DropdownMenuItem>
-        <DropdownMenuItem>
-          Billing
-          <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
+        <DropdownMenuItem as="div">
+          <NuxtLink to="/account" class="flex items-center space-x-2">
+            Settings
+          </NuxtLink>
         </DropdownMenuItem>
-        <DropdownMenuItem>
-          Settings
-          <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
-        </DropdownMenuItem>
-        <DropdownMenuItem>New Team</DropdownMenuItem>
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
       <DropdownMenuItem @click="handleLogout">
@@ -45,7 +42,6 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import {
   Avatar,
   AvatarFallback,
@@ -80,7 +76,7 @@ const initials = computed(() => {
 // Method to handle logout
 const handleLogout = async () => {
   try {
-    await logout() // Call the logout function from userStore
+    await logout() // Call the logout function from useAuthApi
     router.push('/login') // Redirect to login page or other route after logout
   } catch (error) {
     console.error("Logout failed:", error)

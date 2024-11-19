@@ -8,21 +8,62 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.db.models import Q, Prefetch
 
 class RestaurantViewSet(viewsets.ModelViewSet):
     serializer_class = RestaurantSerializer
-    queryset = Restaurant.objects.all().prefetch_related('promos', 'menus', 'images')
+    queryset = Restaurant.objects.all()
 
     def get_queryset(self):
-        # If the user is authenticated, filter restaurants by the owner (logged-in user)
-        if self.request.user.is_authenticated:
-            return Restaurant.objects.filter(owner=self.request.user).prefetch_related('promos', 'menus', 'images')
-        # Otherwise, return all restaurants for public access
-        return super().get_queryset()
+        user = self.request.user
+
+        # Check if the user is authenticated
+        if not user.is_authenticated:
+            return Restaurant.objects.prefetch_related('promos', 'menus', 'images')
+
+        # Get user profile
+        profile = user.profile
+
+        # If the user is a customer, return all restaurants with promos available for the user
+        if profile.type_of_user == 'customer':
+            available_promos = Promo.objects.exclude(
+                usages__customer=user,
+                usages__status="approved"
+            )
+            return Restaurant.objects.prefetch_related(
+                Prefetch('promos', queryset=available_promos),
+                'menus',
+                'images'
+            )
+
+        # If the user is an admin or restaurant owner, return only the restaurants they created
+        if profile.type_of_user in ['admin', 'restaurant_owner']:
+            return Restaurant.objects.filter(owner=user).prefetch_related(
+                Prefetch('promos', queryset=Promo.objects.filter(restaurant__owner=user)),
+                'menus',
+                'images'
+            )
+
+        # Default behavior for other cases
+        return Restaurant.objects.prefetch_related('promos', 'menus', 'images')
 
 class PromoViewSet(viewsets.ModelViewSet):
     queryset = Promo.objects.all()
     serializer_class = PromoSerializer
+
+    def get_queryset(self):
+        """
+        Exclude promos that have been used and approved by the current user.
+        """
+        if self.request.user.is_authenticated:
+            # Exclude promos where the user has an approved usage
+            return Promo.objects.exclude(
+                usages__customer=self.request.user,
+                usages__status="approved"
+            ).distinct()
+
+        # For unauthenticated users, return all promos
+        return super().get_queryset()
 
 class MenuViewSet(viewsets.ModelViewSet):
     queryset = Menu.objects.all().prefetch_related(

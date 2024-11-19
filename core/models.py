@@ -8,6 +8,7 @@ from rest_framework.authtoken.models import Token
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
+from django.utils.text import slugify
 
 class Category(models.Model):
     CATEGORY_TYPES = (
@@ -57,6 +58,7 @@ class Restaurant(models.Model):
             "Sunday": "Closed"
         }
     )
+    slug = models.SlugField(max_length=255, unique=False, blank=True, null=True)
     location = models.CharField(max_length=255)
     coordinates = gis_models.PointField()
     city = models.CharField(max_length=100, null=True, blank=True)
@@ -77,6 +79,11 @@ class Restaurant(models.Model):
         }
     )
 
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+    
     def __str__(self):
         return self.name
     
@@ -91,11 +98,18 @@ class Promo(models.Model):
         ('fixed', 'Fixed Amount'),
     )
 
-    restaurant = models.ForeignKey('Restaurant', on_delete=models.CASCADE, related_name='promos')
+    restaurant = models.ForeignKey('Restaurant', on_delete=models.CASCADE, related_name='promos', null=True, blank=True)
+    menu = models.ForeignKey('Menu', on_delete=models.CASCADE, related_name='promos', null=True, blank=True)
     name = models.CharField(max_length=255)
     description = models.TextField()
     discount = models.DecimalField(max_digits=5, decimal_places=2)
     discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPES, default='percentage')
+    image = models.ImageField(upload_to='promo_images/', blank=True, null=True)
+    usage_limit = models.PositiveIntegerField(null=True, blank=True)  # Total times promo can be used
+    usage_count = models.PositiveIntegerField(default=0)  # Tracks how many times it has been used
+    status = models.CharField(max_length=10, choices=STATUSES, default='active')
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
     time_offer = models.JSONField(
         default={
             "Monday": "9:00AM – 3:00PM",
@@ -107,15 +121,27 @@ class Promo(models.Model):
             "Sunday": "Closed"
         }
     )
-    status = models.CharField(max_length=10, choices=STATUSES, default='active')
-    image = models.ImageField(upload_to='promo_images/', blank=True, null=True)
     priority_index = models.PositiveIntegerField(null=True, blank=True)
-    start_date = models.DateField(null=True, blank=True)
-    end_date = models.DateField(null=True, blank=True)
     minimum_order = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     code = models.CharField(max_length=50, unique=True, null=True, blank=True)
-    usage_limit = models.PositiveIntegerField(null=True, blank=True)
     target_audience = models.CharField(max_length=50, null=True, blank=True)
+
+
+    def can_be_used(self):
+        """Check if the promo is valid and can be used."""
+        if self.status != 'active':
+            return False
+        if self.usage_limit is not None and self.usage_count >= self.usage_limit:
+            return False
+        return True
+
+    def increment_usage(self):
+        """Increment usage count when the promo is used."""
+        if self.can_be_used():
+            self.usage_count += 1
+            self.save()
+            return True
+        return False
 
     def __str__(self):
         return self.name
