@@ -28,7 +28,7 @@ STRIPE_SECRET_KEY = ""
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['18.190.28.96', 'localhost']
 
 SITE_ID = 1
 
@@ -82,6 +82,7 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
+    "http://18.190.28.96",
     "http://localhost:3000",
 ]
 
