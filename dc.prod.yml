@@ -1,0 +1,16 @@
+version: "3"
+
+services:
+  frontend:
+    build:
+      context: ./dineease-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./dineease-frontend:/app
+    working_dir: /app
+    networks:
+      - back-tier
+    depends_on:
+      - backend

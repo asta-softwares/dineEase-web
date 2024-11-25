@@ -1,0 +1,71 @@
+version: "3"
+
+services:
+  frontend:
+    build:
+      context: ./dineease-frontend
+    ports:
+      - 3000:3000
+    volumes:
+      - ./dineease-frontend:/app
+    working_dir: /app
+    networks:
+      - back-tier
+
+  backend:
+    command: ./command.sh
+    build:
+      context: ./dineease-web
+      dockerfile: Dockerfile
+    volumes:
+      - ./dineease-web:/app
+      - static:/app/static
+      - media:/app/media
+    depends_on:
+      - db
+    networks:
+      - back-tier
+    environment:
+      DJANGO_DB_HOST: db
+      DJANGO_DB_PORT: 5433
+      DJANGO_DB_USER: postgres
+      DJANGO_DB_PASSWORD: postgres
+
+  db:
+    image: postgis/postgis:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks:
+      - back-tier
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+      - static:/static
+      - media:/media
+    networks:
+      - back-tier
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  static:
+    driver: local
+  media:
+    driver: local
+  pg-data:
+    driver: local
+
+networks:
+  back-tier:
+    driver: bridge
