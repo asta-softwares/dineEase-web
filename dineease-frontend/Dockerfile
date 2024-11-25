@@ -7,19 +7,18 @@ WORKDIR /app
 # Copy package.json and package-lock.json with ownership for 'node' user
 COPY --chown=node:node package*.json ./
 
-# Switch to 'node' user and install dependencies
-USER node
-# RUN npm install
+# Install dependencies as 'node' user
+USER root
+RUN npm install
 
 # Switch back to root to copy the rest of the files
-USER root
 COPY --chown=node:node . .
 
-# Ensure permissions for .nuxt and other directories
+# Ensure permissions for .nuxt, node_modules, and other directories
 RUN mkdir -p .nuxt node_modules/.cache && \
     chown -R node:node /app
 
-# Switch to 'node' user for running the application
+# Switch back to 'node' user for running the application
 USER node
 
 # Expose the Nuxt development server port
