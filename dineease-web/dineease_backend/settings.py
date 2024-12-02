@@ -82,7 +82,7 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://18.118.79.88",z
+    "http://18.118.79.88",
     "https://18.118.79.88",
     "https://partners.dineease.ca",
     "http://partners.dineease.ca",
