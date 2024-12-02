@@ -28,7 +28,7 @@ STRIPE_SECRET_KEY = ""
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['18.118.18.181', 'localhost']
+ALLOWED_HOSTS = ['18.118.18.181', 'localhost', 'partners.dineease.ca']
 
 SITE_ID = 1
 
@@ -84,6 +84,8 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://18.118.18.181",
     "https://18.118.18.181",
+    "https://partners.dineease.ca",
+    "http://partners.dineease.ca",
     "http://localhost:3000",
 ]
 
