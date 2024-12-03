@@ -10,7 +10,7 @@ services:
   frontend:
     environment:
       - NODE_ENV=development
-      - NUXT_PUBLIC_API_BASE_URL=https://partners.dineease.ca/
+      - NUXT_PUBLIC_API_BASE_URL=https://partners.dineease.ca/api/
 
   backend:
     environment:
