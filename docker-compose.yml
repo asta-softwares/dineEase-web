@@ -1,11 +1,11 @@
-version: "3"
+version: "3.8"
 
 services:
   frontend:
     build:
       context: ./dineease-frontend
     ports:
-      - 3000:3000
+      - "3000:3000"
     volumes:
       - ./dineease-frontend:/app
     working_dir: /app
@@ -48,10 +48,10 @@ services:
     image: nginx:latest
     ports:
       - "80:80"
+      - "443:443"
     volumes:
-      - ./nginx/conf.d/:/etc/nginx/conf.d/
-      - static:/static
-      - media:/media
+      - ./static:/static
+      - ./media:/media
     networks:
       - back-tier
     depends_on:

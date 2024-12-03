@@ -1,16 +1,18 @@
-version: "3"
+version: "3.8"
 
 services:
-  frontend:
-    build:
-      context: ./dineease-frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
+  nginx:
     volumes:
-      - ./dineease-frontend:/app
-    working_dir: /app
-    networks:
-      - back-tier
-    depends_on:
-      - backend
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+
+  frontend:
+    environment:
+      - NODE_ENV=development
+
+  backend:
+    environment:
+      - DJANGO_DEBUG=True
+
+networks:
+  back-tier:
+    driver: bridge

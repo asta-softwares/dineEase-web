@@ -1,16 +1,32 @@
-version: "3"
+version: "3.8"
 
 services:
-  frontend:
-    build:
-      context: ./dineease-frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
+  nginx:
     volumes:
-      - ./dineease-frontend:/app
-    working_dir: /app
+      - ./nginx/prod.conf.d/default.conf:/etc/nginx/conf.d/default.conf
+      - ./letsencrypt:/etc/letsencrypt
+      - ./var/www/certbot:/var/www/certbot
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./letsencrypt:/etc/letsencrypt
+      - ./var/www/certbot:/var/www/certbot
+    command: certonly --webroot --webroot-path=/var/www/certbot -d partners.dineease.ca --email Info@dineease.ca --agree-tos --non-interactive
     networks:
       - back-tier
-    depends_on:
-      - backend
+    restart: unless-stopped
+
+  frontend:
+    environment:
+      - NODE_ENV=development
+      - PARTNERS_URL=https://partners.dineease.ca
+
+  backend:
+    environment:
+      - DJANGO_DEBUG=FalsE
+      - DJANGO_DB_HOST=db
+
+networks:
+  back-tier:
+    driver: bridge
