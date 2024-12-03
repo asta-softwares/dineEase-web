@@ -7,16 +7,6 @@ services:
       - ./letsencrypt:/etc/letsencrypt
       - ./var/www/certbot:/var/www/certbot
 
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - ./letsencrypt:/etc/letsencrypt
-      - ./var/www/certbot:/var/www/certbot
-    command: certonly --webroot --webroot-path=/var/www/certbot -d partners.dineease.ca --email Info@dineease.ca --agree-tos --non-interactive
-    networks:
-      - back-tier
-    restart: unless-stopped
-
   frontend:
     environment:
       - NODE_ENV=development
