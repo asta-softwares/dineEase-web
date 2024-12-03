@@ -89,6 +89,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://partners.dineease.ca',
+    'http://partners.dineease.ca',
+]
+
 ROOT_URLCONF = 'dineease_backend.urls'
 
 TEMPLATES = [
