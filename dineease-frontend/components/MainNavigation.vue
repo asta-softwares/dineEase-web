@@ -1,5 +1,5 @@
 <template>
-    <div class="border-b">
+    <div class="border-b bg-white">
       <div class="flex h-16 items-center px-4 max-w-screen-xl mx-auto">
         <!-- Clickable Logo and Tagline -->
         <NuxtLink to="/" class="flex items-center">

@@ -1,5 +1,5 @@
 <template>
-    <div class="flex-1 flex flex-col gap-2 pt-0">
+    <div class="grid grid-cols-2 gap-2 pt-0">
       <TransitionGroup name="list" appear>
         <button
           v-for="item in items"
@@ -13,7 +13,7 @@
           <div class="flex w-full flex-col gap-1">
             <div class="flex items-center">
               <div class="flex items-center gap-2">
-                <img :src="item.image" alt="Restaurant Image" class="w-10 h-10 rounded-md object-cover">
+                <img :src="item.image" alt="Restaurant Image" class="w-20 h-20 rounded-md object-cover">
                 <div class="font-semibold">
                   {{ item.name }}
                 </div>
@@ -44,9 +44,13 @@
             </div>
           </div>
 
-          <div class="flex items-center gap-2">
-            <Badge v-for="(hours, day) in item.operating_hours" :key="day" variant="outline">
-              {{ day }}: {{ hours }}
+          <div class="grid grid-cols-2 gap-2">
+            <Badge
+              v-for="(hours, day) in sortedOperatingHours(item.operating_hours)"
+              :key="day"
+              :variant="hours.toLowerCase().includes('closed') ? 'destructive' : 'outline'"
+            >
+              <b>{{ day }}</b>: {{ hours }}
             </Badge>
           </div>
         </button>
@@ -57,8 +61,8 @@
 <script setup>
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { formatDistanceToNow } from 'date-fns'
 import { useRouter } from 'vue-router'
+import { sortedOperatingHours } from '~/lib/timeUtils';
 
 const router = useRouter()
 
@@ -78,7 +82,7 @@ function getBadgeVariantFromService(serviceType) {
 }
 
 const handleItemClick = (item) => {
-  router.push(`/restaurant/${item.id}`)
+  router.push(`/restaurants/${item.id}`)
 }
 </script>
 

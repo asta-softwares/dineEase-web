@@ -1,12 +1,12 @@
 from rest_framework import viewsets, generics, status
 from rest_framework.views import APIView
 from .models import Restaurant, Promo, Menu, RestaurantImage, ExpiringToken
-from .serializers import RestaurantSerializer, PromoSerializer, MenuSerializer, Category, CategorySerializer, RegisterSerializer, LoginSerializer, UserSerializer
+from .serializers import RestaurantMiniSerializer, RestaurantSerializer, PromoSerializer, MenuSerializer, Category, CategorySerializer, RegisterSerializer, LoginSerializer, UserSerializer, CustomTokenObtainPairSerializer
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.authentication import TokenAuthentication
+from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q, Prefetch
 
@@ -46,6 +46,26 @@ class RestaurantViewSet(viewsets.ModelViewSet):
 
         # Default behavior for other cases
         return Restaurant.objects.prefetch_related('promos', 'menus', 'images')
+    
+class RestaurantMiniListView(generics.ListAPIView):
+    serializer_class = RestaurantMiniSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+
+        # Check if the user is authenticated
+        if not user.is_authenticated:
+            return Restaurant.objects.none()
+
+        # Get user profile
+        profile = user.profile
+
+        # If the user is an admin or restaurant owner, return restaurants they own
+        if profile.type_of_user in ['admin', 'restaurant_owner']:
+            return Restaurant.objects.filter(owner=user)
+
+        # Default behavior: return an empty queryset
+        return Restaurant.objects.none()
 
 class PromoViewSet(viewsets.ModelViewSet):
     queryset = Promo.objects.all()
@@ -117,7 +137,7 @@ class LoginView(APIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
-        
+
         # Create JWT tokens
         refresh = RefreshToken.for_user(user)
         access_token = refresh.access_token
@@ -142,6 +162,9 @@ class LogoutView(APIView):
             return Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)
         except Token.DoesNotExist:
             return Response({"detail": "Token not found."}, status=status.HTTP_400_BAD_REQUEST)
+        
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
     
 class UserDetailView(APIView):
     permission_classes = [IsAuthenticated]

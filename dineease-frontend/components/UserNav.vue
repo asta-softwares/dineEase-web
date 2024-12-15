@@ -68,8 +68,8 @@ const { logout } = useAuthApi()
 
 // Calculate initials from user's first and last name
 const initials = computed(() => {
-  const firstName = userStore.user.first_name || ''
-  const lastName = userStore.user.last_name || ''
+  const firstName = userStore.user?.first_name || ''
+  const lastName = userStore.user?.last_name || ''
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
 })
 

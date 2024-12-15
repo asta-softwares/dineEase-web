@@ -1,43 +1,97 @@
 <template>
-  <div>
-    <!-- Show MainNavigation if the user is logged in -->
+  <div class="relative h-screen w-screen overflow-x-hidden">
+    <div class="absolute inset-0 bg-short-bg bg-no-repeat bg-center opacity-20 -z-10"></div>
+    <Toaster />
+    <NuxtLoadingIndicator />
+
     <MainNavigation v-if="user" />
 
-    <!-- Loading Skeleton -->
-    <div v-if="loading" class="loading-container">
-      <Skeleton class="w-[200px] h-[40px] rounded-full mb-4" />
-      <Skeleton class="w-[150px] h-[20px] rounded-full mb-2" />
-      <Skeleton class="w-[180px] h-[20px] rounded-full" />
+    <!-- Main Content Wrapper -->
+    <div class="relative z-10 max-w-screen-xl w-full mx-auto py-4 min-h-full h-auto">
+      
+      <!-- Tabs Navigation -->
+      <Tabs v-if="showTabs" :default-value="getDefaultTab()" class="space-y-4 p-4">
+        <TabsList>
+          <TabsTrigger value="overview" @click="navigateTo('/')">Overview</TabsTrigger>
+          <TabsTrigger value="orders" @click="navigateTo('/orders/')">Orders</TabsTrigger>
+          <TabsTrigger value="restaurants" @click="navigateTo('/restaurants/')">Restaurants</TabsTrigger>
+          <TabsTrigger value="menu" @click="navigateTo('/menus/')">Menu</TabsTrigger>
+          <TabsTrigger value="promo" @click="navigateTo('/promos/')">Promo</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      <!-- Loading Skeleton -->
+      <div v-if="loading" class="splash-screen">
+        <div class="flex flex-col items-center justify-center gap-y-4">
+          <img src="/images/logo.svg" alt="Logo" class="splash-logo" />
+          <div class="splash-spinner"></div>
+        </div>
+      </div>
+
+      <!-- Error Placeholder -->
+      <div v-else-if="error" class="error-container">
+        <p class="error-text">{{ error }}</p>
+      </div>
+
+      <!-- Main Content -->
+      <div v-else class="py-2">
+        <NuxtPage />
+      </div>
     </div>
 
-    <!-- Error Placeholder -->
-    <div v-else-if="error" class="error-container">
-      <p class="error-text">{{ error }}</p>
-    </div>
-
-    <!-- Main Content -->
-    <div v-else>
-      <NuxtPage />
-    </div>
-
+    <!-- Footer -->
     <Footer />
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, watchEffect } from 'vue'
 import { useUserStore } from '@/stores/user'
 import MainNavigation from '@/components/MainNavigation.vue'
-import { Skeleton } from '@/components/ui/skeleton'
 import Footer from '@/components/Footer.vue'
+import { useRouter, useRoute } from 'vue-router'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import Toaster from '@/components/ui/toast/Toaster.vue'
 
-// Use the user store to get user data
+// Store and Router Instances
 const userStore = useUserStore()
+const router = useRouter()
+const route = useRoute()
+
+// State Management
 const loading = ref(true)
 const error = ref(null)
-const user = ref(null)
 
-// Load user data on the server or client
+// Computed User State (Reactive)
+const user = computed(() => userStore.user)
+
+// Show Tabs Condition
+const showTabs = computed(() => {
+  return ['/', '/orders/', '/restaurants/', '/menus/', '/promos/'].includes(route.path)
+})
+
+// Default Tab Based on Route
+const getDefaultTab = () => {
+  switch (route.path) {
+    case '/orders/':
+      return 'orders'
+    case '/restaurants/':
+      return 'restaurants'
+    case '/menus/':
+      return 'menu'
+    case '/promos/':
+      return 'promo'
+    default:
+      return 'overview'
+  }
+}
+
+// Function to Navigate to Specific Path
+const navigateTo = (path) => {
+  router.push(path)
+}
+
+// Load User Data
 const { data, pending, error: fetchError } = await useAsyncData('user-data', async () => {
   if (!userStore.user) {
     await userStore.loadUser()
@@ -45,30 +99,60 @@ const { data, pending, error: fetchError } = await useAsyncData('user-data', asy
   return userStore.user
 })
 
+// Handle Loading State and Errors
 watchEffect(() => {
-  loading.value = pending.value
+  if (!pending.value) {
+    setTimeout(() => {
+      loading.value = false
+    }, 1000)
+  }
   error.value = fetchError.value
-  user.value = data.value
 })
 </script>
 
 <style scoped>
-.loading-container {
+/* Splash Screen Styles */
+.splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #f8f9fa;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  margin-top: 20vh;
+  z-index: 9999;
 }
 
+.splash-logo {
+  width: 100px;
+  margin-bottom: 20px;
+}
+
+/* Simple Spinner Animation */
+.splash-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #ccc;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error Placeholder */
 .error-container {
   text-align: center;
   margin-top: 20vh;
-}
-
-.error-image {
-  width: 100px;
-  height: 100px;
-  margin-bottom: 16px;
 }
 
 .error-text {

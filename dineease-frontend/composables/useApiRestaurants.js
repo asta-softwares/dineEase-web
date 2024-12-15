@@ -17,6 +17,15 @@ export function useApiEndpoints() {
     return data.value
   }
 
+  const fetchRestaurantsMini = async () => {
+    const { data, error } = await useFetch(`${baseUrl}restaurants-mini/`, {
+      method: 'GET',
+      headers,
+    })
+    if (error.value) throw error.value
+    return data.value
+  }
+
   const fetchRestaurantById = async (id) => {
     const { data, error } = await useFetch(`${baseUrl}restaurants/${id}/`, {
       method: 'GET',
@@ -64,6 +73,16 @@ export function useApiEndpoints() {
     return data.value
   }
 
+  const createPromo = async (promoData) => {
+    const { data, error } = await useFetch(`${baseUrl}promos/`, {
+      method: 'POST',
+      headers,
+      body: promoData,
+    })
+    if (error.value) throw error.value
+    return data.value
+  }
+
   const editPromo = async (id, updateData) => {
     const { data, error } = await useFetch(`${baseUrl}promos/${id}/`, {
       method: 'PATCH',
@@ -102,6 +121,16 @@ export function useApiEndpoints() {
     return data.value
   }
 
+  const createMenu = async (menuData) => {
+    const { data, error } = await useFetch(`${baseUrl}menus/`, {
+      method: 'POST',
+      headers,
+      body: menuData,
+    })
+    if (error.value) throw error.value
+    return data.value
+  }
+
   const editMenu = async (id, updateData) => {
     const { data, error } = await useFetch(`${baseUrl}menus/${id}/`, {
       method: 'PATCH',
@@ -120,7 +149,7 @@ export function useApiEndpoints() {
     if (error.value) throw error.value
     return data.value
   }
-
+  
   return {
     fetchRestaurants,
     fetchRestaurantById,
@@ -128,11 +157,14 @@ export function useApiEndpoints() {
     deleteRestaurant,
     fetchPromos,
     fetchPromoById,
+    createPromo,
     editPromo,
     deletePromo,
     fetchMenus,
     fetchMenuById,
+    createMenu,
     editMenu,
     deleteMenu,
+    fetchRestaurantsMini,
   }
 }

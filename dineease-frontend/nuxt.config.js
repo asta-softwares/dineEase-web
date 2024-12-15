@@ -3,6 +3,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/',
+      MAPBOX_API_KEY: 'pk.eyJ1IjoiY291bnRhYmxlLXdlYiIsImEiOiJjamQyaTV0dXYxdjJuMnFtd3phMzJjZXBxIn0.DHpU55XJjLMUBHrl7d1bbQ'
     },
   },
 

@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  nginx:
+    volumes:
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+
+  frontend:
+    environment:
+      - NODE_ENV=development
+
+  backend:
+    environment:
+      - DJANGO_DEBUG=True
+
+networks:
+  back-tier:
+    driver: bridge

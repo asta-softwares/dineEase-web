@@ -1,5 +1,6 @@
 import { useRuntimeConfig } from '#app'
 import { useUserStore } from '@/stores/user'
+import errorMap from 'zod/locales/en.js'
 
 export function useAuthApi() {
   const config = useRuntimeConfig()
@@ -35,29 +36,29 @@ export function useAuthApi() {
     return data.value
   }
   
-  const fetchUser = async () => {
+  const fetchUser = async () => {    
     const { data, error } = await useFetch(baseUrl + 'me/', {
       headers: {
-        Authorization: `Bearer ${authToken.value}`, 
+        Authorization: `Bearer ${authToken.value}`,
       },
-    })
+    });
+  
+    console.log("IDK", data, error.value?.statusCode || error.value?.status);
   
     if (error.value) {
-      // Check if the error is related to token expiration (e.g., 401 or 403)
-      if (error.value.status === 401) {
-        // Attempt to refresh the token
-        const success = await refreshAccessToken()
-        if (success) {
-          // Retry fetching user details with the new access token
-          return await fetchUser()
-        }
+      // Attempt to refresh the token regardless of the error status code
+      const success = await refreshAccessToken();
+      if (success) {
+        // Retry fetching user details with the new access token
+        return await fetchUser();
       }
-      throw error.value
+  
+      // If refresh fails, throw the original error
+      throw error.value;
     }
   
-    console.log("USER DATA FROM API:", data)
-    return data.value
-  }
+    return data.value;
+  };
   
   const refreshAccessToken = async () => {
     if (!refreshToken.value) {

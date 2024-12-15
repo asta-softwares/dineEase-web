@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Restaurant, Promo, Menu, UserProfile, RestaurantImage, AddonCategory, AddonOption, Category
 from django.core.exceptions import ValidationError
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class RestaurantImageSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(use_url=True)
@@ -10,8 +11,14 @@ class RestaurantImageSerializer(serializers.ModelSerializer):
         model = RestaurantImage
         fields = ['id', 'image', 'caption']
 
+class RestaurantMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Restaurant
+        fields = ['id', 'name']
+        
 class PromoSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(use_url=True)  # Keeps the image field with URL usage
+    restaurant = RestaurantMiniSerializer(read_only=True)
 
     class Meta:
         model = Promo
@@ -40,13 +47,16 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class MenuSerializer(serializers.ModelSerializer):
     addon_categories = AddonCategorySerializer(many=True, read_only=True)
-    images = RestaurantImageSerializer(many=True, read_only=True)  # Include images if you need to
-    discounted_cost = serializers.SerializerMethodField()  # New field for discounted price
+    images = RestaurantImageSerializer(many=True, read_only=True)
+    discounted_cost = serializers.SerializerMethodField()
+    
+    restaurant = serializers.PrimaryKeyRelatedField(queryset=Restaurant.objects.all(), write_only=True)
+    restaurant_details = RestaurantMiniSerializer(source='restaurant', read_only=True)
 
     class Meta:
         model = Menu
         fields = [
-            'id', 'name', 'description', 'cost', 'category', 'status', 'image', 
+            'id', 'name', 'description', 'restaurant', 'restaurant_details', 'cost', 'category', 'status', 'image', 
             'priority_index', 'addon_categories', 'images', 'discounted_cost'
         ]
 
@@ -136,20 +146,53 @@ class LoginSerializer(serializers.Serializer):
     def validate(self, data):
         identifier = data.get('identifier')
         password = data.get('password')
+        user = None
 
-        # Check if identifier is an email
-        user = User.objects.filter(email=identifier).first()
-        
-        # If no user found with email, check if identifier is a phone
+        # Check if identifier matches an email
+        if '@' in identifier:
+            user = User.objects.filter(email=identifier).first()
+
+        # Check if identifier matches a phone number
         if not user:
             profile = UserProfile.objects.filter(phone=identifier).first()
             user = profile.user if profile else None
 
+        # Check if identifier matches a username
+        if not user:
+            user = User.objects.filter(username=identifier).first()
+
+        # Validate password
         if user and user.check_password(password):
             data['user'] = user
             return data
-        raise serializers.ValidationError("Incorrect username or password.")
+
+        raise serializers.ValidationError("Incorrect username, email, or phone number, or password.")
     
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        username = attrs.get('username')
+        password = attrs.get('password')
+        user = None
+
+        # Check if the username is an email
+        if '@' in username:
+            user = User.objects.filter(email=username).first()
+
+        # Check if the username is a phone number in UserProfile
+        if not user:
+            profile = UserProfile.objects.filter(phone=username).first()
+            user = profile.user if profile else None
+
+        # Check if the username matches the username field
+        if not user:
+            user = User.objects.filter(username=username).first()
+
+        if user and user.check_password(password):
+            # Set the 'username' in attrs for TokenObtainPairSerializer
+            attrs['username'] = user.username
+            return super().validate(attrs)
+
+        raise serializers.ValidationError("Incorrect email, phone number, or username, or password.")
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile

@@ -11,9 +11,21 @@
           <Label for="identifier">Email or Phone</Label>
           <Input id="identifier" v-model="identifier" placeholder="m@example.com or 1234567890" />
         </div>
-        <div class="grid gap-2">
+        <div class="grid gap-2 relative">
           <Label for="password">Password</Label>
-          <Input id="password" type="password" v-model="password" placeholder="Password" />
+          <Input 
+            :type="isPasswordVisible ? 'text' : 'password'" 
+            id="password" 
+            v-model="password" 
+            placeholder="Password" 
+          />
+          <div 
+            type="button" 
+            class="absolute right-0 top-1/2 transform -translate-y-1/4 p-2" 
+            @click="togglePasswordVisibility">
+            <EyeIcon v-if="isPasswordVisible" />
+            <EyeOffIcon v-else />
+          </div>
         </div>
         <div v-if="errorMessage" class="text-red-500 text-sm mt-2">
           {{ errorMessage }}
@@ -21,16 +33,6 @@
       </CardContent>
       <CardFooter class="flex flex-col gap-y-4">
         <Button class="w-full" @click="handleLogin">Log in</Button>
-        <div class="relative">
-          <div class="absolute inset-0 flex items-center">
-            <span class="w-full border-t" />
-          </div>
-          <div class="relative flex justify-center text-xs uppercase">
-            <span class="bg-background px-2 text-muted-foreground">
-              Or continue with
-            </span>
-          </div>
-        </div>
       </CardFooter>
     </Card>
   </div>
@@ -45,9 +47,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+// Import icons from lucide-vue-next
+import { Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-vue-next'
+
 const identifier = ref('')
 const password = ref('')
 const errorMessage = ref('')
+const isPasswordVisible = ref(false) // State to toggle password visibility
 const { login } = useAuthApi()
 const router = useRouter()
 
@@ -63,5 +69,9 @@ const handleLogin = async () => {
     console.error(error)
     errorMessage.value = error.response?.data?.detail || 'Incorrect username or password.'
   }
+}
+
+const togglePasswordVisibility = () => {
+  isPasswordVisible.value = !isPasswordVisible.value
 }
 </script>
