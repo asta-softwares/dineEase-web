@@ -1,234 +1,98 @@
 <template>
-  <div class="md:hidden">
-    <VPImage
-      alt="Dashboard"
-      width="1280"
-      height="1214" class="block" :image="{
-        dark: '/examples/dashboard-dark.png',
-        light: '/examples/dashboard-light.png',
-      }"
-    />
-  </div>
-
   <div class="hidden flex-col md:flex">
     <div class="flex-1 space-y-4 p-8 pt-2 max-w-screen-xl w-full mx-auto">
       <div class="flex items-center justify-between space-y-2">
-        <h2 class="text-3xl font-bold tracking-tight">
-          Dashboard
-        </h2>
-        <!-- <div class="flex items-center space-x-2">
-          <DateRangePicker />
-          <Button>Download</Button>
-        </div> -->
+        <h2 class="text-3xl font-bold tracking-tight">Order List</h2>
       </div>
-        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle class="text-sm font-medium">
-                Total Revenue
-              </CardTitle>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                class="h-4 w-4 text-muted-foreground"
-              >
-                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-              </svg>
-            </CardHeader>
-            <CardContent>
-              <div class="text-2xl font-bold">
-                $45,231.89
-              </div>
-              <p class="text-xs text-muted-foreground">
-                +20.1% from last month
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle class="text-sm font-medium">
-                Subscriptions
-              </CardTitle>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                class="h-4 w-4 text-muted-foreground"
-              >
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-            </CardHeader>
-            <CardContent>
-              <div class="text-2xl font-bold">
-                +2350
-              </div>
-              <p class="text-xs text-muted-foreground">
-                +180.1% from last month
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle class="text-sm font-medium">
-                Sales
-              </CardTitle>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                class="h-4 w-4 text-muted-foreground"
-              >
-                <rect width="20" height="14" x="2" y="5" rx="2" />
-                <path d="M2 10h20" />
-              </svg>
-            </CardHeader>
-            <CardContent>
-              <div class="text-2xl font-bold">
-                +12,234
-              </div>
-              <p class="text-xs text-muted-foreground">
-                +19% from last month
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle class="text-sm font-medium">
-                Active Now
-              </CardTitle>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                class="h-4 w-4 text-muted-foreground"
-              >
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-              </svg>
-            </CardHeader>
-            <CardContent>
-              <div class="text-2xl font-bold">
-                +573
-              </div>
-              <p class="text-xs text-muted-foreground">
-                +201 since last hour
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-        <!-- <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Card class="col-span-4">
-            <CardHeader>
-              <CardTitle>Overview</CardTitle>
-            </CardHeader>
-            <CardContent class="pl-2">
-              <Overview />
-            </CardContent>
-          </Card>
-          <Card class="col-span-3">
-            <CardHeader>
-              <CardTitle>Recent Sales</CardTitle>
-              <CardDescription>
-                You made 265 sales this month.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RecentSales />
-            </CardContent>
-          </Card>
-        </div> -->
-        <CardItems :items="restaurants"/>
+
+      <!-- Orders Grid -->
+      <div v-if="orders.length" class="grid gap-4">
+        <Card v-for="order in orders" :key="order.id" class="p-4">
+          <CardHeader>
+            <CardTitle class="text-lg font-semibold">Order #{{ order.id }}</CardTitle>
+            <CardDescription>Status: {{ order.status }}</CardDescription>
+          </CardHeader>
+          <CardContent class="space-y-2">
+            <p><strong>Customer:</strong> {{ order.customer }}</p>
+            <p><strong>Restaurant:</strong> {{ order.restaurant }}</p>
+            <p><strong>Total:</strong> ${{ order.order_total }}</p>
+            <p><strong>Order Time:</strong> {{ order.order_time }}</p>
+
+            <!-- Order Items -->
+            <div>
+              <h4 class="font-medium">Items:</h4>
+              <ul class="list-disc list-inside">
+                <li v-for="item in order.items" :key="item.menu_item.id">
+                  {{ item.menu_item.name }} (x{{ item.quantity }}) - ${{ item.price }}
+                </li>
+              </ul>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-2 mt-4">
+              <Button @click="acceptOrder(order.id)" :disabled="order.status !== 'pending'">
+                Accept
+              </Button>
+              <Button variant="destructive" @click="rejectOrder(order.id)" :disabled="order.status !== 'pending'">
+                Reject
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <!-- No Orders Available -->
+      <div v-else class="flex flex-col items-center justify-center p-8">
+        <img src="/images/order.svg" alt="No Orders" class="w-64 h-64" />
+        <h1 class="text-2xl font-semibold">No Orders Available</h1>
+        <span class="text-gray-500 mb-4 w-[400px] text-center">
+          There are currently no orders to display. Once customers place orders, they'll appear here.
+        </span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import CardItems from '@/components/CardItems.vue'
-import { useApiEndpoints } from '@/composables/useApiRestaurants.js'
-import { useOrderActions } from '~/composables/orderTest.js'
+import { ref, onMounted } from 'vue'
+import { useOrderApiEndpoints } from '~/composables/useOrderApi'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
-const restaurants = ref([])
-const promos = ref([])
-const menus = ref([])
-const { fetchRestaurants, fetchPromos, fetchMenus } = useApiEndpoints()
-const { callCreateOrder, callUpdateOrderStatus, callUpdatePaymentStatus } = useOrderActions()
+const orders = ref([])
+const { fetchOrders, updateOrderStatus } = useOrderApiEndpoints()
 
 // Fetch data when the component mounts
 onMounted(async () => {
-  // await createNewOrder()
   try {
-    promos.value = await fetchPromos()
-    restaurants.value = await fetchRestaurants()
-    menus.value = await fetchMenus()
-
-    console.log(restaurants.value)
+    orders.value = await fetchOrders()
+    console.log(orders.value)
   } catch (error) {
-    console.error("Error fetching data:", error)
+    console.error('Error fetching data:', error)
   }
 })
 
-async function createNewOrder() {
-  try {
-    const response = await callCreateOrder() 
-    console.log('Order Response:', response)
-  } catch (error) {
-    console.error('Failed to create order:', error)
-  }
-}
-
+// Accept Order
 async function acceptOrder(orderId) {
   try {
-    const response = await callUpdateOrderStatus(orderId, 'accept')
-    console.log('Order Accepted:', response)
+    await updateOrderStatus(orderId, { status: 'accepted' })
+    const order = orders.value.find((o) => o.id === orderId)
+    if (order) order.status = 'accepted'
+    console.log(`Order ${orderId} accepted.`)
   } catch (error) {
     console.error('Failed to accept order:', error)
   }
 }
 
+// Reject Order
 async function rejectOrder(orderId) {
   try {
-    const response = await callUpdateOrderStatus(orderId, 'reject')
-    console.log('Order Rejected:', response)
+    await updateOrderStatus(orderId, { status: 'rejected' })
+    const order = orders.value.find((o) => o.id === orderId)
+    if (order) order.status = 'rejected'
+    console.log(`Order ${orderId} rejected.`)
   } catch (error) {
     console.error('Failed to reject order:', error)
   }
 }
-
-async function completePayment(paymentId) {
-  try {
-    const response = await callUpdatePaymentStatus(paymentId, 'completed')
-    console.log('Payment Completed:', response)
-  } catch (error) {
-    console.error('Failed to complete payment:', error)
-  }
-}
-
-async function failPayment(paymentId) {
-  try {
-    const response = await callUpdatePaymentStatus(paymentId, 'failed')
-    console.log('Payment Failed:', response)
-  } catch (error) {
-    console.error('Failed to fail payment:', error)
-  }
-}
-
-
 </script>

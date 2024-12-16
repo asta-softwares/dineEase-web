@@ -73,7 +73,7 @@ class PromoInline(admin.TabularInline):
 # Admin for Menu
 @admin.register(Menu)
 class MenuAdmin(admin.ModelAdmin):
-    inlines = [MenuImageInline, AddonCategoryInline, PromoInline]  # Add categories and options in MenuAdmin
+    inlines = [MenuImageInline, AddonCategoryInline]  # Add categories and options in MenuAdmin
     list_display = ('name', 'restaurant', 'cost', 'status')
     search_fields = ['name']
 

@@ -17,8 +17,6 @@
   import BreadcrumbNav from '@/components/BreadcrumbNav.vue'
   import { useCategories } from '~/composables/useCategory'
   import { toast } from '@/components/ui/toast'
-
-  const { fetchRestaurantCategories, fetchMenuCategories } = useCategories()
   
   // Fetch menu data
   const { fetchMenuById, editMenu, createMenu } = useApiEndpoints()
@@ -51,7 +49,6 @@
   }
 })
   
-  // Save menu (create or update)
   const saveMenu = async (formData) => {
   try {
     let action = 'created'

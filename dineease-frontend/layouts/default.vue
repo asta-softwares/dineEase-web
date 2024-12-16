@@ -7,18 +7,17 @@
     <MainNavigation v-if="user" />
 
     <!-- Main Content Wrapper -->
-    <div class="relative z-10 max-w-screen-xl w-full mx-auto py-4 min-h-full h-auto">
+    <div class="relative z-10 max-w-screen-xl w-full mx-auto p-4 min-h-full h-auto">
       
       <!-- Tabs Navigation -->
-      <Tabs v-if="showTabs" :default-value="getDefaultTab()" class="space-y-4 p-4">
+      <!-- <Tabs v-if="showTabs" :default-value="getDefaultTab()" class="space-y-4 p-4">
         <TabsList>
-          <TabsTrigger value="overview" @click="navigateTo('/')">Overview</TabsTrigger>
           <TabsTrigger value="orders" @click="navigateTo('/orders/')">Orders</TabsTrigger>
           <TabsTrigger value="restaurants" @click="navigateTo('/restaurants/')">Restaurants</TabsTrigger>
           <TabsTrigger value="menu" @click="navigateTo('/menus/')">Menu</TabsTrigger>
           <TabsTrigger value="promo" @click="navigateTo('/promos/')">Promo</TabsTrigger>
         </TabsList>
-      </Tabs>
+      </Tabs> -->
 
       <!-- Loading Skeleton -->
       <div v-if="loading" class="splash-screen">
@@ -67,24 +66,26 @@ const user = computed(() => userStore.user)
 
 // Show Tabs Condition
 const showTabs = computed(() => {
-  return ['/', '/orders/', '/restaurants/', '/menus/', '/promos/'].includes(route.path)
+  const normalizedPath = route.path.replace(/\/$/, '')
+  return ['/', '/orders', '/restaurants', '/menus', '/promos'].includes(normalizedPath)
 })
 
-// Default Tab Based on Route
 const getDefaultTab = () => {
-  switch (route.path) {
-    case '/orders/':
-      return 'orders'
-    case '/restaurants/':
-      return 'restaurants'
-    case '/menus/':
-      return 'menu'
-    case '/promos/':
-      return 'promo'
+  const normalizedPath = route.path.replace(/\/$/, '');
+
+  switch (normalizedPath) {
+    case '/orders':
+      return 'orders';
+    case '/restaurants':
+      return 'restaurants';
+    case '/menus':
+      return 'menu';
+    case '/promos':
+      return 'promo';
     default:
-      return 'overview'
+      return 'overview';
   }
-}
+};
 
 // Function to Navigate to Specific Path
 const navigateTo = (path) => {

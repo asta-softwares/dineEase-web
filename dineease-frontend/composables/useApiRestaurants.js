@@ -73,6 +73,20 @@ export function useApiEndpoints() {
     return data.value
   }
 
+  const fetchPromosByRestaurant = async (restaurantId, promoType = null) => {
+    const url = promoType
+      ? `${baseUrl}promos/restaurant/${restaurantId}/?promo_type=${promoType}`
+      : `${baseUrl}promos/restaurant/${restaurantId}/`
+  
+    const { data, error } = await useFetch(url, {
+      method: 'GET',
+      headers,
+    })
+    
+    if (error.value) throw error.value
+    return data.value
+  }
+
   const createPromo = async (promoData) => {
     const { data, error } = await useFetch(`${baseUrl}promos/`, {
       method: 'POST',
@@ -166,5 +180,6 @@ export function useApiEndpoints() {
     editMenu,
     deleteMenu,
     fetchRestaurantsMini,
+    fetchPromosByRestaurant,
   }
 }

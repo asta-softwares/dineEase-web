@@ -2,7 +2,7 @@
   <div class="w-full h-screen flex justify-center items-center">
     <Card class="w-[500px]">
       <CardHeader class="flex flex-col items-center space-y-1">
-        <img class="w-[100px]" src="/images/logo.svg" alt="DineEase Logo" />
+        <img class="w-[75px]" src="/images/logo.svg" alt="DineEase Logo" />
         <CardTitle class="text-2xl">Login to DineEase</CardTitle>
         <CardDescription>Enter your details below to log in</CardDescription>
       </CardHeader>
@@ -21,7 +21,7 @@
           />
           <div 
             type="button" 
-            class="absolute right-0 top-1/2 transform -translate-y-1/4 p-2" 
+            class="absolute right-0 top-1/2 transform -translate-y-1/4 p-2 cursor-pointer" 
             @click="togglePasswordVisibility">
             <EyeIcon v-if="isPasswordVisible" />
             <EyeOffIcon v-else />
@@ -33,6 +33,10 @@
       </CardContent>
       <CardFooter class="flex flex-col gap-y-4">
         <Button class="w-full" @click="handleLogin">Log in</Button>
+        <div class="text-sm text-center">
+          Don't have an account? 
+          <span class="text-blue-500 cursor-pointer" @click="goToRegister">Register</span>
+        </div>
       </CardFooter>
     </Card>
   </div>
@@ -46,6 +50,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { toast } from '@/components/ui/toast'
 
 // Import icons from lucide-vue-next
 import { Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-vue-next'
@@ -62,7 +67,10 @@ const handleLogin = async () => {
     errorMessage.value = '' // Reset error message
     const data = await login(identifier.value, password.value)
     console.log(data)
-    alert('Login successful!')
+    toast({
+      title: 'Logged In Successfully!',
+      description: 'You can now interact with your restaurant.',
+    })
     localStorage.setItem('authToken', data.token)
     router.push('/') // Redirect to a protected route or dashboard
   } catch (error) {
@@ -73,5 +81,9 @@ const handleLogin = async () => {
 
 const togglePasswordVisibility = () => {
   isPasswordVisible.value = !isPasswordVisible.value
+}
+
+const goToRegister = () => {
+  router.push('/register')
 }
 </script>

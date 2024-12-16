@@ -7,9 +7,16 @@ export function useOrderApiEndpoints() {
       Authorization: `Bearer ${authToken.value}`,
     }
   
-    // --- Order Endpoints ---
+    const fetchOrders = async () => {
+      const { data, error } = await useFetch(`${baseUrl}payments/orders/`, {
+        method: 'GET',
+        headers,
+      })
+      if (error.value) throw error.value
+      return data.value
+    }
+
     const createOrder = async (orderData) => {
-    console.log(orderData, headers)
       const { data, error } = await useFetch(`${baseUrl}payments/orders/create/`, {
         method: 'POST',
         headers,
@@ -17,7 +24,6 @@ export function useOrderApiEndpoints() {
       })
       if (error.value) throw error.value
 
-      console.log("IDK", data, `${baseUrl}payments/orders/create/`)
       return data.value
     }
   
@@ -43,6 +49,7 @@ export function useOrderApiEndpoints() {
     }
   
     return {
+      fetchOrders,
       createOrder,
       updateOrderStatus,
       updatePaymentStatus,

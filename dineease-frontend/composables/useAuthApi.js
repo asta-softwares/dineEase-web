@@ -9,13 +9,13 @@ export function useAuthApi() {
   const refreshToken = useCookie('refreshToken')
   const userStore = useUserStore()
 
-  const register = async (email, phone, username, password, name, typeOfUser) => {
+  const register = async (email, phone, username, password, firstName, lastName, typeOfUser) => {
     const { data, error } = await useFetch(baseUrl + 'register/', {
       method: 'POST',
-      body: { email, phone, username, password, name, typeOfUser },
+      body: { email, phone, username, password, first_name: firstName, last_name: lastName, type_of_user: typeOfUser },
     })
     if (error.value) throw error.value
-
+  
     authToken.value = data.value.access
     refreshToken.value = data.value.refresh
     return data.value

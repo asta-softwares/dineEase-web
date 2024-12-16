@@ -60,24 +60,35 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useUserStore } from '@/stores/user'
 import { useAuthApi } from '@/composables/useAuthApi'
+import { toast } from '@/components/ui/toast'
 
 const userStore = useUserStore()
 const router = useRouter()
 
 const { logout } = useAuthApi()
 
-// Calculate initials from user's first and last name
 const initials = computed(() => {
   const firstName = userStore.user?.first_name || ''
   const lastName = userStore.user?.last_name || ''
-  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+  const username = userStore.user?.username || ''
+
+  if (firstName || lastName) {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+  }
+
+  return username.slice(0, 2).toUpperCase()
 })
 
 // Method to handle logout
 const handleLogout = async () => {
   try {
-    await logout() // Call the logout function from useAuthApi
-    router.push('/login') // Redirect to login page or other route after logout
+    await logout()
+    toast({
+      title: 'Logged Out Successfully!',
+      description: 'You have been redirected to the login page.',
+      variant: 'success',
+    })
+    router.push('/login')
   } catch (error) {
     console.error("Logout failed:", error)
   }

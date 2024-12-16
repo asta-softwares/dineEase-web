@@ -17,15 +17,15 @@ class RestaurantMiniSerializer(serializers.ModelSerializer):
         fields = ['id', 'name']
         
 class PromoSerializer(serializers.ModelSerializer):
-    image = serializers.ImageField(use_url=True)  # Keeps the image field with URL usage
-    restaurant = RestaurantMiniSerializer(read_only=True)
+    restaurant = serializers.PrimaryKeyRelatedField(queryset=Restaurant.objects.all(), write_only=True)
+    restaurant_details = RestaurantMiniSerializer(source='restaurant', read_only=True)
 
     class Meta:
         model = Promo
         fields = [
-            'id', 'restaurant', 'name', 'description', 'discount', 'discount_type', 
-            'time_offer', 'status', 'image', 'priority_index', 'start_date', 
-            'end_date', 'minimum_order', 'code', 'usage_limit', 'target_audience'
+            'id', 'restaurant', 'restaurant_details', 'name', 'description', 'discount', 'discount_type', 
+            'time_offer', 'status', 'priority_index', 'start_date', 
+            'end_date', 'minimum_order', 'code', 'usage_limit', 'target_audience', 'promo_type',
         ]
 
 class AddonOptionSerializer(serializers.ModelSerializer):
@@ -45,29 +45,35 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ['id', 'name', 'description', 'image']
 
+class MenuMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Menu
+        fields = [
+            'id', 'name', 'description', 'cost', 'category', 'status', 'image',
+        ]
+
 class MenuSerializer(serializers.ModelSerializer):
     addon_categories = AddonCategorySerializer(many=True, read_only=True)
     images = RestaurantImageSerializer(many=True, read_only=True)
     discounted_cost = serializers.SerializerMethodField()
-    
+
     restaurant = serializers.PrimaryKeyRelatedField(queryset=Restaurant.objects.all(), write_only=True)
     restaurant_details = RestaurantMiniSerializer(source='restaurant', read_only=True)
+    promos = serializers.PrimaryKeyRelatedField(queryset=Promo.objects.all(), many=True, required=False)
 
     class Meta:
         model = Menu
         fields = [
-            'id', 'name', 'description', 'restaurant', 'restaurant_details', 'cost', 'category', 'status', 'image', 
-            'priority_index', 'addon_categories', 'images', 'discounted_cost'
+            'id', 'name', 'description', 'restaurant', 'restaurant_details', 'cost',
+            'category', 'status', 'image', 'priority_index', 'addon_categories',
+            'images', 'discounted_cost', 'promos'
         ]
 
     def get_discounted_cost(self, obj):
         """
         Calculate the discounted cost if a promo is applied to the menu.
         """
-        # Get promos associated with the menu
         promo = obj.promos.filter(status='active').order_by('-priority_index').first()
-
-        # If there's no active promo, return None (or original price if desired)
         if not promo:
             return None
 
@@ -79,10 +85,21 @@ class MenuSerializer(serializers.ModelSerializer):
         else:
             discount = 0
 
-        # Ensure discounted price is not negative
         discounted_price = max(obj.cost - discount, 0)
-
         return round(discounted_price, 2)
+
+    def create(self, validated_data):
+        promos_data = validated_data.pop('promos', [])
+        menu = Menu.objects.create(**validated_data)
+        menu.promos.set(promos_data)
+        return menu
+
+    def update(self, instance, validated_data):
+        promos_data = validated_data.pop('promos', None)
+        instance = super().update(instance, validated_data)
+        if promos_data is not None:
+            instance.promos.set(promos_data)
+        return instance
 
 class RestaurantSerializer(serializers.ModelSerializer):
     promos = PromoSerializer(many=True, read_only=True)
@@ -97,17 +114,20 @@ class RestaurantSerializer(serializers.ModelSerializer):
             'operating_hours', 'location', 'coordinates',
             'priority_index', 'telephone', 'ratings', 'description', 'status', 'owner', 
             'social_media_links',
-            'promos', 'menus', 'images'
+            'promos', 'menus', 'images',
         ]
 
 class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=False, allow_blank=True)
-    phone = serializers.CharField(required=False, allow_blank=True, max_length=15)
+    phone = serializers.CharField(required=False, allow_blank=True, max_length=15, write_only=True)
     username = serializers.CharField(required=False, allow_blank=True)
+    first_name = serializers.CharField(required=True)
+    last_name = serializers.CharField(required=True)
+    type_of_user = serializers.CharField(required=True, write_only=True)
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'phone', 'password')
+        fields = ('username', 'email', 'phone', 'password', 'first_name', 'last_name', 'type_of_user')
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate_email(self, value):
@@ -127,17 +147,29 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         email = validated_data.get('email')
-        phone = validated_data.get('phone')
-        username = validated_data.get('username') or email
+        phone = validated_data.pop('phone', None)
+        type_of_user = validated_data.pop('type_of_user')
 
         user = User.objects.create_user(
-            username=username,
+            username=validated_data.get('username') or email,
             email=email,
-            password=validated_data['password']
+            password=validated_data['password'],
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name'],
         )
-        UserProfile.objects.create(user=user, phone=phone)
+
+        # Create UserProfile with phone and type_of_user
+        UserProfile.objects.create(user=user, phone=phone, type_of_user=type_of_user)
 
         return user
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        profile = getattr(instance, 'userprofile', None)
+        if profile:
+            representation['phone'] = profile.phone
+            representation['type_of_user'] = profile.type_of_user
+        return representation
 
 class LoginSerializer(serializers.Serializer):
     identifier = serializers.CharField()

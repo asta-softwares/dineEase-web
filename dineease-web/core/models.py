@@ -98,15 +98,20 @@ class Promo(models.Model):
         ('fixed', 'Fixed Amount'),
     )
 
+    PROMO_TYPES = (
+        ('menu', 'Menu'),
+        ('restaurant', 'Restaurant'),
+        ('dineease', 'DineEase'),
+    )
+
     restaurant = models.ForeignKey('Restaurant', on_delete=models.CASCADE, related_name='promos', null=True, blank=True)
-    menu = models.ForeignKey('Menu', on_delete=models.CASCADE, related_name='promos', null=True, blank=True)
     name = models.CharField(max_length=255)
     description = models.TextField()
     discount = models.DecimalField(max_digits=5, decimal_places=2)
     discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPES, default='percentage')
-    image = models.ImageField(upload_to='promo_images/', blank=True, null=True)
-    usage_limit = models.PositiveIntegerField(null=True, blank=True)  # Total times promo can be used
-    usage_count = models.PositiveIntegerField(default=0)  # Tracks how many times it has been used
+    # image = models.ImageField(upload_to='promo_images/', blank=True, null=True)
+    usage_limit = models.PositiveIntegerField(null=True, blank=True)
+    usage_count = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=10, choices=STATUSES, default='active')
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
@@ -125,7 +130,7 @@ class Promo(models.Model):
     minimum_order = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     code = models.CharField(max_length=50, unique=True, null=True, blank=True)
     target_audience = models.CharField(max_length=50, null=True, blank=True)
-
+    promo_type = models.CharField(max_length=20, choices=PROMO_TYPES, default='restaurant')
 
     def can_be_used(self):
         """Check if the promo is valid and can be used."""
@@ -160,6 +165,7 @@ class Menu(models.Model):
     status = models.CharField(max_length=10, choices=STATUSES, default='active')
     image = models.ImageField(upload_to='menu_images/', blank=True, null=True)
     priority_index = models.PositiveIntegerField(null=True, blank=True)
+    promos = models.ManyToManyField(Promo, blank=True, related_name='menus')
 
     def __str__(self):
         return self.name

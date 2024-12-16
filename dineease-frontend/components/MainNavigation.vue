@@ -9,7 +9,7 @@
             <span class="text-[10px] font-semibold">CRAVE . CLICK . ENJOY</span>
           </div>
         </NuxtLink>
-  
+        <MainNav class="mx-auto" />
         <!-- Search and UserNav Components -->
         <div class="ml-auto flex items-center space-x-4">
           <Search />
@@ -22,4 +22,5 @@
   <script setup>
   import Search from '@/components/Search.vue'
   import UserNav from '@/components/UserNav.vue'
+  import MainNav from './components/MainNav.vue'
   </script>

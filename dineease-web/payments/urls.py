@@ -8,12 +8,9 @@ router.register(r'orders', OrderViewSet)
 router.register(r'payments', PaymentViewSet)
 
 urlpatterns = [
-    # Register DefaultRouter routes under 'router/' to avoid conflicts
-    path('router/', include(router.urls)),
-
-    # Custom endpoints
+    path('', include(router.urls)),
     path('orders/create/', CreateOrderView.as_view(), name='create_order'),
     path('orders/<int:order_id>/update-status/', UpdateOrderStatusView.as_view(), name='update_order_status'),
-    path('<int:payment_id>/update-status/', UpdatePaymentStatusView.as_view(), name='update_payment_status'),
+    path('payments/<int:payment_id>/update-status/', UpdatePaymentStatusView.as_view(), name='update_payment_status'),
     path('stripe/webhook/', stripe_webhook, name='stripe_webhook'),
 ]

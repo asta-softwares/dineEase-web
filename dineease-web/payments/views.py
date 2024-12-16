@@ -4,11 +4,25 @@ from .serializers import OrderSerializer, PaymentSerializer
 from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 
 
 class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.all().prefetch_related('menu_items', 'addon_options', 'orderitem_set')
+    """
+    A ViewSet for viewing and editing order instances.
+    """
     serializer_class = OrderSerializer
+    queryset = Order.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        Optionally filter orders by the authenticated user or other criteria.
+        """
+        user = self.request.user
+        if user.is_staff:
+            return Order.objects.all()
+        return Order.objects.filter(customer=user)
 
 class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all().select_related('order')

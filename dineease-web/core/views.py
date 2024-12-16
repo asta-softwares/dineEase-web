@@ -9,6 +9,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q, Prefetch
+from rest_framework.decorators import action
+from rest_framework import permissions
 
 class RestaurantViewSet(viewsets.ModelViewSet):
     serializer_class = RestaurantSerializer
@@ -74,23 +76,77 @@ class PromoViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Exclude promos that have been used and approved by the current user.
+        If the user is an admin or restaurant owner, show promos related to their restaurants.
         """
-        if self.request.user.is_authenticated:
-            # Exclude promos where the user has an approved usage
+        user = self.request.user
+
+        # Check if the user is authenticated
+        if user.is_authenticated:
+            profile = getattr(user, 'profile', None)
+            
+            # If user is admin or restaurant owner, return promos for their restaurants
+            if profile and profile.type_of_user in ['admin', 'restaurant_owner']:
+                return Promo.objects.filter(restaurant__owner=user).distinct()
+
+            # Exclude promos that have been used and approved by the current user
             return Promo.objects.exclude(
-                usages__customer=self.request.user,
+                usages__customer=user,
                 usages__status="approved"
             ).distinct()
 
         # For unauthenticated users, return all promos
         return super().get_queryset()
 
+    @action(detail=False, methods=['get'], url_path='restaurant/(?P<restaurant_id>[^/.]+)')
+    def by_restaurant(self, request, restaurant_id=None):
+        """
+        Custom action to get promos by restaurant ID and optionally by promo_type.
+        If the user is an admin or owner, ensure they only access their restaurant's promos.
+        """
+        promo_type = request.query_params.get('promo_type', None)
+        user = request.user
+
+        # Base queryset filtered by restaurant ID
+        promos = self.get_queryset().filter(restaurant_id=restaurant_id)
+
+        # For admin or restaurant owners, ensure they only access their promos
+        if user.is_authenticated:
+            profile = getattr(user, 'profile', None)
+            if profile and profile.type_of_user in ['admin', 'restaurant_owner']:
+                promos = promos.filter(restaurant__owner=user)
+
+        # Further filter by promo_type if provided
+        if promo_type:
+            promos = promos.filter(promo_type=promo_type)
+
+        serializer = self.get_serializer(promos, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 class MenuViewSet(viewsets.ModelViewSet):
     queryset = Menu.objects.all().prefetch_related(
         'images',
         'addon_categories__addon_options'
     )
     serializer_class = MenuSerializer
+
+    def get_queryset(self):
+        """
+        If the user is an admin or restaurant owner, return menus for their restaurants.
+        """
+        user = self.request.user
+
+        # Check if the user is authenticated
+        if user.is_authenticated:
+            profile = getattr(user, 'profile', None)
+
+            # If user is admin or restaurant owner, return menus for their restaurants
+            if profile and profile.type_of_user in ['admin', 'restaurant_owner']:
+                return Menu.objects.filter(restaurant__owner=user).prefetch_related(
+                    'images',
+                    'addon_categories__addon_options'
+                ).distinct()
+
+        # For unauthenticated or general users, return all menus
+        return super().get_queryset()
 
 class FeaturedRestaurantListView(generics.ListAPIView):
     queryset = Restaurant.objects.all().order_by('priority_index').prefetch_related('images')
@@ -110,6 +166,7 @@ class MenuCategoryList(generics.ListAPIView):
 
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
+    permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -119,12 +176,9 @@ class RegisterView(generics.CreateAPIView):
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except ValidationError as e:
-            # Explicitly return validation errors as a 400 Bad Request
-            print(f"Unexpected error during registration1: {e}")
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            # Log unexpected errors and return a 500 Internal Server Error with details
-            print(f"Unexpected error during registration: {e}")  # Log the error for debugging
+            print(f"Unexpected error during registration: {e}")
             return Response(
                 {"detail": "An unexpected error occurred during registration."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
