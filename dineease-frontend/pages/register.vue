@@ -80,6 +80,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { toast } from '@/components/ui/toast'
 
 // Form fields
 const firstName = ref('')
@@ -171,8 +172,12 @@ const handleRegister = async () => {
 
     await register(email.value, phone.value, username.value, password.value, firstName.value, lastName.value, 'restaurant_owner')
 
-    // Redirect to dashboard after successful registration
-    router.push('/login')
+    toast({
+      title: 'Registration Successful!',
+      description: 'Your account has been created. You will now be redirected.',
+    })
+
+    window.location.href = '/login'
   } catch (error) {
       console.error("Unexpected error during registration:", error)
       const responseErrors = error.data || {}

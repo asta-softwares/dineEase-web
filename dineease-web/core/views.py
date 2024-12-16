@@ -11,10 +11,13 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q, Prefetch
 from rest_framework.decorators import action
 from rest_framework import permissions
+from rest_framework.permissions import AllowAny
 
 class RestaurantViewSet(viewsets.ModelViewSet):
     serializer_class = RestaurantSerializer
     queryset = Restaurant.objects.all()
+
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         user = self.request.user
@@ -73,6 +76,8 @@ class PromoViewSet(viewsets.ModelViewSet):
     queryset = Promo.objects.all()
     serializer_class = PromoSerializer
 
+    permission_classes = [AllowAny]
+
     def get_queryset(self):
         """
         Exclude promos that have been used and approved by the current user.
@@ -121,6 +126,7 @@ class PromoViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(promos, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 class MenuViewSet(viewsets.ModelViewSet):
     queryset = Menu.objects.all().prefetch_related(
         'images',
@@ -128,9 +134,13 @@ class MenuViewSet(viewsets.ModelViewSet):
     )
     serializer_class = MenuSerializer
 
+    # Allow unauthenticated access to the view
+    permission_classes = [AllowAny]
+
     def get_queryset(self):
         """
         If the user is an admin or restaurant owner, return menus for their restaurants.
+        Otherwise, return all menus.
         """
         user = self.request.user
 
@@ -147,6 +157,7 @@ class MenuViewSet(viewsets.ModelViewSet):
 
         # For unauthenticated or general users, return all menus
         return super().get_queryset()
+
 
 class FeaturedRestaurantListView(generics.ListAPIView):
     queryset = Restaurant.objects.all().order_by('priority_index').prefetch_related('images')
@@ -166,7 +177,7 @@ class MenuCategoryList(generics.ListAPIView):
 
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

@@ -122,6 +122,8 @@ export function useApiEndpoints() {
       method: 'GET',
       headers,
     })
+
+    console.log("HJEADER", headers)
     if (error.value) throw error.value
     return data.value
   }
