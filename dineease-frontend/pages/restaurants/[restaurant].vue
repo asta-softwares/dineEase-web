@@ -188,10 +188,8 @@ import { sortedOperatingHours } from '~/lib/timeUtils';
   )
 
   const coordinates = computed(() => {
-  if (restaurant.value && restaurant.value.coordinates) {
-    return restaurant.value.coordinates.match(/-?\d+\.\d+/g).map(Number)
-  }
-  return null
+    console.log("IDK", restaurant.value)
+    return restaurant.value?.coordinates || []
 })
 
 const breadcrumbItems = ref([

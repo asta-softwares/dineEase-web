@@ -11,7 +11,7 @@
         </NuxtLink>
         <MainNav class="mx-auto" />
         <!-- Search and UserNav Components -->
-        <div class="ml-auto flex items-center space-x-4">
+        <div class="flex items-center space-x-4">
           <Search />
           <UserNav />
         </div>

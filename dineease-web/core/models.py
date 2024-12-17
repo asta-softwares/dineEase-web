@@ -60,7 +60,7 @@ class Restaurant(models.Model):
     )
     slug = models.SlugField(max_length=255, unique=False, blank=True, null=True)
     location = models.CharField(max_length=255)
-    coordinates = gis_models.PointField()
+    coordinates = gis_models.PointField(null=True, blank=True)
     city = models.CharField(max_length=100, null=True, blank=True)
     province = models.CharField(max_length=2, choices=CANADA_PROVINCE_CHOICES, null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
@@ -216,8 +216,10 @@ class UserProfile(models.Model):
     email = models.EmailField(unique=True, null=True, blank=True)
     type_of_user = models.CharField(max_length=20, choices=USER_TYPES, default='customer')
     phone = models.CharField(max_length=15, unique=True)
+    coordinates = gis_models.PointField(null=True, blank=True)
     address = models.CharField(max_length=255)
     city = models.CharField(max_length=100)
+    province = models.CharField(max_length=2, choices=CANADA_PROVINCE_CHOICES, null=True, blank=True)
     image = models.ImageField(upload_to='user_pictures/', blank=True)
     
     def __str__(self):

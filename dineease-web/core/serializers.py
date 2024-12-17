@@ -3,6 +3,9 @@ from django.contrib.auth.models import User
 from .models import Restaurant, Promo, Menu, UserProfile, RestaurantImage, AddonCategory, AddonOption, Category
 from django.core.exceptions import ValidationError
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.gis.geos import Point
+from datetime import datetime
+from django.utils.timezone import now, localtime, activate
 
 class RestaurantImageSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(use_url=True)
@@ -106,16 +109,83 @@ class RestaurantSerializer(serializers.ModelSerializer):
     menus = MenuSerializer(many=True, read_only=True)
     images = RestaurantImageSerializer(many=True, read_only=True)
     categories = CategorySerializer(many=True, read_only=True)
+    coordinates = serializers.SerializerMethodField()
+    distance = serializers.SerializerMethodField()
+    is_open = serializers.SerializerMethodField()
 
     class Meta:
         model = Restaurant
         fields = [
             'id', 'name', 'categories', 'service_type', 'image', 'city', 'province', 'email',
-            'operating_hours', 'location', 'coordinates',
+            'operating_hours', 'location', 'coordinates', 'distance', 'is_open',
             'priority_index', 'telephone', 'ratings', 'description', 'status', 'owner', 
             'social_media_links',
             'promos', 'menus', 'images',
         ]
+
+    def __init__(self, *args, **kwargs):
+        # Get the context from the serializer
+        context = kwargs.get('context', {})
+        user = context.get('request').user if context.get('request') else None
+
+        # If the user is not authenticated or has no coordinates, remove the 'distance' field
+        super().__init__(*args, **kwargs)
+        if not user or not user.is_authenticated or not getattr(user.profile, 'coordinates', None):
+            self.fields.pop('distance', None)
+
+    def get_coordinates(self, obj):
+        if obj.coordinates and isinstance(obj.coordinates, Point):
+            return [obj.coordinates.x, obj.coordinates.y]
+        return None
+
+    def get_distance(self, obj):
+        if hasattr(obj, 'distance') and obj.distance:
+            return round(obj.distance.km, 2)
+        return None
+
+    def to_internal_value(self, data):
+        # Handle input for coordinates as a list [longitude, latitude]
+        coordinates = data.get('coordinates')
+        if coordinates and isinstance(coordinates, list) and len(coordinates) == 2:
+            data['coordinates'] = Point(coordinates[0], coordinates[1])
+        return super().to_internal_value(data)
+    
+    def get_is_open(self, obj):
+        # activate('Asia/Manila') 
+        current_time = localtime(now())  # Get current time in PHT
+        current_day = current_time.strftime("%A")  # Get current day (e.g., 'Monday')
+
+        # Get today's operating hours
+        operating_hours = obj.operating_hours.get(current_day)
+
+        if not operating_hours or operating_hours.lower() == 'closed':
+            return False
+
+        try:
+            open_time_str, close_time_str = operating_hours.replace('–', '-').split('-')
+            open_time = datetime.strptime(open_time_str.strip(), "%I:%M%p").time()
+            close_time = datetime.strptime(close_time_str.strip(), "%I:%M%p").time()
+
+            # Debugging logs
+            print(obj.name)
+            print(f"Current PHT time: {current_time.time()}")
+            print(f"Open time: {open_time}")
+            print(f"Close time: {close_time}")
+
+            # Handle case where close time is past midnight
+            if close_time < open_time:
+                # If current time is before midnight or after midnight
+                if current_time.time() >= open_time or current_time.time() <= close_time:
+                    return True
+            else:
+                if open_time <= current_time.time() <= close_time:
+                    return True
+
+        except Exception as e:
+            print(f"Error parsing operating hours: {e}")
+            return False
+
+        return False
 
 class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=False, allow_blank=True)
@@ -226,13 +296,74 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         raise serializers.ValidationError("Incorrect email, phone number, or username, or password.")
 class UserProfileSerializer(serializers.ModelSerializer):
+    # Use a ListField to accept [longitude, latitude] as input
+    coordinates = serializers.ListField(
+        child=serializers.FloatField(),
+        required=False
+    )
+
     class Meta:
         model = UserProfile
-        fields = ['phone', 'image', 'address', 'city', 'address', 'city']
+        fields = ['phone', 'image', 'address', 'city', 'province', 'coordinates']
+
+    def validate_coordinates(self, value):
+        # Ensure coordinates are a valid list with two float values
+        if len(value) != 2:
+            raise serializers.ValidationError("Coordinates must be a list with two float values.")
+        return Point(value[0], value[1])
+
+    def update(self, instance, validated_data):
+        # Handle coordinates separately
+        coordinates = validated_data.pop('coordinates', None)
+        if coordinates:
+            print("Updating coordinates to:", coordinates)  # Debugging log
+            instance.coordinates = coordinates
+
+        # Update other fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        print("Instance coordinates after save:", instance.coordinates)  # Debugging log
+        return instance
 
 class UserSerializer(serializers.ModelSerializer):
-    profile = UserProfileSerializer()  # Nested serializer to include profile data
+    profile = UserProfileSerializer()
 
     class Meta:
         model = User
-        fields = ['id', 'profile', 'username', 'email', 'first_name', 'last_name']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile']
+
+    def update(self, instance, validated_data):
+        profile_data = validated_data.pop('profile', {})
+        instance = super().update(instance, validated_data)
+
+        # Update the related UserProfile instance
+        profile = instance.profile
+        for attr, value in profile_data.items():
+            setattr(profile, attr, value)
+        profile.save()
+
+        return instance
+    
+class UserUpdateSerializer(serializers.ModelSerializer):
+    current_password = serializers.CharField(write_only=True, required=False)
+    new_password = serializers.CharField(write_only=True, required=False)
+    confirm_password = serializers.CharField(write_only=True, required=False)
+
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'current_password', 'new_password', 'confirm_password']
+
+    def validate(self, data):
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        confirm_password = data.get('confirm_password')
+
+        if new_password or confirm_password:
+            if not current_password:
+                raise serializers.ValidationError({'current_password': 'Current password is required to change the password.'})
+            if new_password != confirm_password:
+                raise serializers.ValidationError({'confirm_password': 'New passwords do not match.'})
+
+        return data

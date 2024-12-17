@@ -43,7 +43,8 @@
     breadcrumbItems.value = [
       { label: 'Dashboard', href: '/' },
       { label: menu.value?.restaurant_details.name || 'Name', href: `/restaurants/${menu.value?.restaurant_details.id}` },
-      { label: menu.value?.name || 'Name', href: `/menus/` },
+      { label: 'Menu' || 'Name', href: `/menus/` },
+      { label: menu.value?.name || 'Name' },
       { label: 'Edit Restaurant Details' },
     ]
   }

@@ -31,9 +31,9 @@ console.log(promo)
 // Breadcrumb items
 const breadcrumbItems = ref([
   { label: 'Dashboard', href: '/' },
-  { label: 'Promos', href: '/promos' },
   { label: promo.value?.restaurant_details.name || 'Name', href: `/restaurants/${promo.value?.restaurant_details.id}` },
-  { label: promo.value?.name || 'Name', href: `/promos/` },
+  { label: 'Promos', href: '/promos' },
+  { label: promo.value?.name || 'Name' },
   { label: isEditMode ? 'Edit Promo' : 'Create Promo' },
 ])
 

@@ -14,7 +14,7 @@ services:
 
   backend:
     environment:
-      - DJANGO_DEBUG=FalsE
+      - DJANGO_DEBUG=False
       - DJANGO_DB_HOST=db
 
 networks:

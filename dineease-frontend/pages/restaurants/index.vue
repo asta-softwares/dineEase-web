@@ -40,6 +40,7 @@ const { fetchRestaurants } = useApiEndpoints()
 onMounted(async () => {
   try {
     restaurants.value = await fetchRestaurants()
+    console.log("rest", restaurants.value)
   } catch (error) {
     console.error("Error fetching data:", error)
   }

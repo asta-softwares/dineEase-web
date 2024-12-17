@@ -43,13 +43,9 @@ export function useAuthApi() {
       },
     });
   
-    console.log("IDK", data, error.value?.statusCode || error.value?.status);
-  
     if (error.value) {
-      // Attempt to refresh the token regardless of the error status code
       const success = await refreshAccessToken();
       if (success) {
-        // Retry fetching user details with the new access token
         return await fetchUser();
       }
   
@@ -59,7 +55,7 @@ export function useAuthApi() {
   
     return data.value;
   };
-  
+
   const refreshAccessToken = async () => {
     if (!refreshToken.value) {
       console.error("No refresh token found. Please log in again.")
@@ -105,5 +101,21 @@ export function useAuthApi() {
     }
   }
 
-  return { register, login, logout, fetchUser }
+  const updateUser = async (userData) => {
+    const { data, error } = await useFetch(baseUrl + 'update-user/', {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${authToken.value}`,
+      },
+      body: userData,
+    })
+
+    if (error.value) throw error.value
+
+    // Reload user data in the store after a successful update
+    await userStore.loadUser()
+    return data.value
+  }
+
+  return { register, login, logout, fetchUser, updateUser }
 }

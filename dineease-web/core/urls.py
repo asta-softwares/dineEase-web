@@ -14,6 +14,7 @@ from .views import (
     UserDetailView,
     CustomTokenObtainPairView,
     RestaurantMiniListView,
+    UserUpdateView,
 )
 from rest_framework_simplejwt.views import (
     TokenRefreshView,
@@ -38,6 +39,7 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('token/logout/', LogoutView.as_view(), name='logout'),
     path('me/', UserDetailView.as_view(), name='user-detail'),
+    path('update-user/', UserUpdateView.as_view(), name='update-user'),
     path('token/', CustomTokenObtainPairView.as_view(), name='custom_token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('token/verify/', TokenVerifyView.as_view(), name='token_verify'),

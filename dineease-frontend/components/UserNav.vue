@@ -22,20 +22,19 @@
       <DropdownMenuSeparator />
       <DropdownMenuGroup>
         <DropdownMenuItem as="div">
-          <NuxtLink to="/profile" class="flex items-center space-x-2">
-            Profile
+          <NuxtLink to="/account" class="flex items-center space-x-2 w-full">
+            Account
           </NuxtLink>
         </DropdownMenuItem>
         <DropdownMenuItem as="div">
-          <NuxtLink to="/account" class="flex items-center space-x-2">
-            Settings
+          <NuxtLink to="/profile" class="flex items-center space-x-2 w-full">
+            Profile
           </NuxtLink>
         </DropdownMenuItem>
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
       <DropdownMenuItem @click="handleLogout">
         Log out
-        <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
       </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>

@@ -11,12 +11,12 @@ const $route = useRoute()
 
 const sidebarNavItems: Item[] = [
   {
-    title: 'Profile',
-    href: '/profile',
-  },
-  {
     title: 'Account',
     href: '/account',
+  },
+  {
+    title: 'Profile',
+    href: '/profile',
   },
 ]
 </script>
