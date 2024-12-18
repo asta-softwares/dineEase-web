@@ -17,7 +17,7 @@ export function useOrderApiEndpoints() {
     }
 
     const createOrder = async (orderData) => {
-      const { data, error } = await useFetch(`${baseUrl}payments/orders/create/`, {
+      const { data, error } = await useFetch(`${baseUrl}payments/order-create/`, {
         method: 'POST',
         headers,
         body: orderData,
@@ -26,9 +26,47 @@ export function useOrderApiEndpoints() {
 
       return data.value
     }
+
+    const createPaymentIntent = async (amount) => {
+      try {
+        const { data, error } = await useFetch(`${baseUrl}payments/create-payment-intent/`, {
+          method: 'POST',
+          headers,
+          body: { amount },  // Send the amount in the request body
+        })
+    
+        if (error.value) {
+          throw error.value
+        }
+    
+        return data.value  // This should contain the clientSecret
+      } catch (err) {
+        console.error('Error creating payment intent:', err)
+        throw err
+      }
+    }
+
+    const rejectOrder = async (orderId, paymentIntentId) => {
+      try {
+        const response = await fetch('/api/refund-payment', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ payment_intent_id: paymentIntentId }),
+        })
+    
+        if (!response.ok) {
+          throw new Error('Refund failed')
+        }
+    
+        console.log(`Order ${orderId} refunded successfully.`)
+        // Update order status to refunded in the frontend
+      } catch (err) {
+        console.error('Failed to refund order:', err)
+      }
+    }
   
     const updateOrderStatus = async (orderId, statusData) => {
-      const { data, error } = await useFetch(`${baseUrl}payments/orders/${orderId}/update-status/`, {
+      const { data, error } = await useFetch(`${baseUrl}payments/update-order-status/${orderId}/`, {
         method: 'POST',
         headers,
         body: statusData,
@@ -53,6 +91,8 @@ export function useOrderApiEndpoints() {
       createOrder,
       updateOrderStatus,
       updatePaymentStatus,
+      createPaymentIntent,
+      rejectOrder
     }
 }
   

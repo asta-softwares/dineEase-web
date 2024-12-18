@@ -1,5 +1,5 @@
 <template>
-  <div class="hidden flex-col md:flex">
+  <div class="flex-col md:flex">
     <div class="flex-1 space-y-4 p-8 pt-2 max-w-screen-xl w-full mx-auto">
       <div class="flex items-center justify-between space-y-2">
         <h2 class="text-3xl font-bold tracking-tight">Order List</h2>
@@ -12,9 +12,18 @@
 
       <!-- Orders Grid -->
       <div v-else-if="orders.length" class="grid gap-4">
-        <Card v-for="order in orders" :key="order.id" class="p-4">
+        <Card
+          v-for="order in orders"
+          :key="order.id"
+          class="p-4 fade-in"
+        >
           <CardHeader>
-            <CardTitle class="text-lg font-semibold">Order #{{ order.id }}</CardTitle>
+            <CardTitle class="text-lg font-semibold flex items-center">
+              Order #{{ order.id }}
+              <span v-if="isNewOrder(order.order_time)" class="ml-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+                New
+              </span>
+            </CardTitle>
             <CardDescription>Status: {{ order.status }}</CardDescription>
           </CardHeader>
           <CardContent class="space-y-2">
@@ -41,6 +50,9 @@
               <Button variant="destructive" @click="rejectOrder(order.id)" :disabled="order.status !== 'pending'">
                 Reject
               </Button>
+              <Button @click="completeOrder(order.id)" :disabled="order.status !== 'confirmed'">
+                Complete Order
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -59,49 +71,133 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useOrderApiEndpoints } from '~/composables/useOrderApi'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import SkeletonLoader from '@/components/Skeleton/SkeletonLoading.vue'
 
 const orders = ref([])
-const isLoading = ref(true) // Loading state
+const isLoading = ref(true)
+const pollingInterval = ref(null) // For storing the interval ID
 const { fetchOrders, updateOrderStatus } = useOrderApiEndpoints()
 
-// Fetch data when the component mounts
+// Fetch initial data when the component mounts
 onMounted(async () => {
+  await loadOrders()
+  startPolling()
+})
+
+// Cleanup the polling interval when the component is unmounted
+onUnmounted(() => {
+  stopPolling()
+})
+
+// Function to fetch orders and append new ones
+async function loadOrders() {
   try {
-    orders.value = await fetchOrders()
-    console.log(orders.value)
+    const fetchedOrders = await fetchOrders()
+    appendNewOrders(fetchedOrders)
   } catch (error) {
     console.error('Error fetching data:', error)
   } finally {
     isLoading.value = false
   }
-})
+}
+
+// Append new orders to the list and sort by recency
+function appendNewOrders(fetchedOrders) {
+  const existingOrderIds = orders.value.map(order => order.id)
+  let newOrderAdded = false
+
+  // Append only new orders
+  fetchedOrders.forEach(order => {
+    if (!existingOrderIds.includes(order.id)) {
+      orders.value.push(order)
+      newOrderAdded = true
+    }
+  })
+
+  if (newOrderAdded) {
+    alert("New Order Received!")
+  }
+
+  // Sort orders by order_time in descending order (most recent first)
+  orders.value.sort((a, b) => new Date(b.order_time) - new Date(a.order_time))
+}
+
+// Determine if an order is new (less than 5 minutes old)
+function isNewOrder(orderTime) {
+  const now = new Date()
+  const orderDate = new Date(orderTime)
+  const diffInMinutes = (now - orderDate) / (1000 * 60)
+  return diffInMinutes <= 5
+}
+
+// Start polling for new orders every 10 seconds
+function startPolling() {
+  pollingInterval.value = setInterval(() => {
+    loadOrders()
+  }, 10000) // Poll every 10 seconds
+}
+
+// Stop polling when the component is unmounted
+function stopPolling() {
+  if (pollingInterval.value) {
+    clearInterval(pollingInterval.value)
+  }
+}
 
 // Accept Order
 async function acceptOrder(orderId) {
   try {
-    await updateOrderStatus(orderId, { status: 'accepted' })
+    await updateOrderStatus(orderId, { action: 'accept' })
     const order = orders.value.find((o) => o.id === orderId)
-    if (order) order.status = 'accepted'
+    if (order) order.status = 'confirmed'
     console.log(`Order ${orderId} accepted.`)
   } catch (error) {
     console.error('Failed to accept order:', error)
   }
 }
 
+async function completeOrder(orderId) {
+  try {
+    await updateOrderStatus(orderId, { action: 'complete' })
+    const order = orders.value.find((o) => o.id === orderId)
+    if (order) order.status = 'completed'
+    console.log(`Order ${orderId} has been completed.`)
+  } catch (error) {
+    console.error('Failed to complete order:', error)
+  }
+}
+
 // Reject Order
 async function rejectOrder(orderId) {
   try {
-    await updateOrderStatus(orderId, { status: 'rejected' })
+    await updateOrderStatus(orderId, { action: 'reject' })
     const order = orders.value.find((o) => o.id === orderId)
-    if (order) order.status = 'rejected'
+    if (order) order.status = 'cancelled'
     console.log(`Order ${orderId} rejected.`)
   } catch (error) {
     console.error('Failed to reject order:', error)
   }
 }
 </script>
+
+<style scoped>
+/* Fade-in animation */
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>

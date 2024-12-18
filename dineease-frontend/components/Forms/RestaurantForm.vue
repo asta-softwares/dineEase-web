@@ -36,13 +36,20 @@
       <FormField v-slot="{ componentField }" name="service_type">
         <FormItem>
           <FormLabel>Service Type</FormLabel>
-          <FormControl>
-            <select class="w-full border rounded-md p-2" v-bind="componentField">
-              <option value="dine-in">Dine-in</option>
-              <option value="takeout">Takeout</option>
-              <option value="both">Both</option>
-            </select>
-          </FormControl>
+          <Select v-bind="componentField">
+            <FormControl>
+              <SelectTrigger>
+                <SelectValue placeholder="Select service type" />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="dine-in">Dine-in</SelectItem>
+                <SelectItem value="takeout">Takeout</SelectItem>
+                <SelectItem value="both">Both</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
           <FormMessage />
         </FormItem>
       </FormField>
@@ -229,6 +236,8 @@ const props = defineProps({
     default: false,
   },
 })
+
+console.log(props.initialData)
 
 const emit = defineEmits(['submit'])
 const imageFile = ref(null)
