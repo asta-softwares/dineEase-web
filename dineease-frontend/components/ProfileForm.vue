@@ -65,7 +65,7 @@
         <FormControl>
           <Input type="text" placeholder="Coordinates (e.g., 125.404, 7.316)" v-bind="componentField" disabled />
         </FormControl>
-        <FormDescription>Your location coordinates in [longitude, latitude] format.</FormDescription>
+        <FormDescription>Your location coordinates in [longitude, latitude] format. Click on the map to change your location.</FormDescription>
         <FormMessage />
       </FormItem>
     </FormField>
@@ -90,7 +90,7 @@ import { toast } from '@/components/ui/toast'
 import { ref, watch, computed } from 'vue'
 import * as z from 'zod'
 import { useAuthApi } from '@/composables/useAuthApi'
-import MiniMap from '~/components/Maps/MiniMap.vue'
+import MiniMap from '@/components/Maps/MiniMap.vue'
 import { CANADA_PROVINCE_CHOICES } from '@/lib/constants'
 
 const { updateUser } = useAuthApi()
@@ -127,7 +127,6 @@ const { handleSubmit, setFieldValue } = useForm({
   },
 })
 
-// Watch for changes in selectedCoordinates and update the form field
 watch(selectedCoordinates, (newCoordinates) => {
   setFieldValue('coordinates', newCoordinates.join(', '))
 })

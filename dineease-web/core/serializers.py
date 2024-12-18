@@ -6,6 +6,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.gis.geos import Point
 from datetime import datetime
 from django.utils.timezone import now, localtime, activate
+import json
 
 class RestaurantImageSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(use_url=True)
@@ -142,13 +143,6 @@ class RestaurantSerializer(serializers.ModelSerializer):
         if hasattr(obj, 'distance') and obj.distance:
             return round(obj.distance.km, 2)
         return None
-
-    def to_internal_value(self, data):
-        # Handle input for coordinates as a list [longitude, latitude]
-        coordinates = data.get('coordinates')
-        if coordinates and isinstance(coordinates, list) and len(coordinates) == 2:
-            data['coordinates'] = Point(coordinates[0], coordinates[1])
-        return super().to_internal_value(data)
     
     def get_is_open(self, obj):
         # activate('Asia/Manila') 
@@ -167,10 +161,10 @@ class RestaurantSerializer(serializers.ModelSerializer):
             close_time = datetime.strptime(close_time_str.strip(), "%I:%M%p").time()
 
             # Debugging logs
-            print(obj.name)
-            print(f"Current PHT time: {current_time.time()}")
-            print(f"Open time: {open_time}")
-            print(f"Close time: {close_time}")
+            # print(obj.name)
+            # print(f"Current PHT time: {current_time.time()}")
+            # print(f"Open time: {open_time}")
+            # print(f"Close time: {close_time}")
 
             # Handle case where close time is past midnight
             if close_time < open_time:
@@ -296,7 +290,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         raise serializers.ValidationError("Incorrect email, phone number, or username, or password.")
 class UserProfileSerializer(serializers.ModelSerializer):
-    # Use a ListField to accept [longitude, latitude] as input
     coordinates = serializers.ListField(
         child=serializers.FloatField(),
         required=False

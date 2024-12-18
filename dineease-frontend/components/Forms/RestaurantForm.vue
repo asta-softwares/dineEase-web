@@ -141,6 +141,20 @@
     <!-- Operating Hours Component -->
     <OperatingHours v-model="operatingHours" :data="initialData?.operating_hours" />
 
+     <!-- Coordinates Field -->
+     <FormField v-slot="{ componentField }" name="coordinates">
+      <FormItem>
+        <FormLabel>Coordinates</FormLabel>
+        <FormControl>
+          <Input type="text" placeholder="Coordinates (e.g., 125.404, 7.316)" v-bind="componentField" disabled />
+        </FormControl>
+        <FormDescription>Your location coordinates in [longitude, latitude] format. Click on the map to change your location.</FormDescription>
+        <FormMessage />
+      </FormItem>
+    </FormField>
+
+    <MiniMap class="h-[500px] my-4" v-model="selectedCoordinates" :coordinates="selectedCoordinates" :is-edit-mode="true" />
+
     <!-- Submit Button -->
     <div class="mt-6 flex gap-4 items-start">
       <Button type="submit">{{ isEditMode ? 'Update Restaurant' : 'Create Restaurant' }}</Button>
@@ -197,6 +211,7 @@ import { useCategories } from '@/composables/useCategory'
 import OperatingHours from '../Time/OperatingHours'
 import { useApiEndpoints } from '@/composables/useApiRestaurants'
 import { toast } from '@/components/ui/toast'
+import MiniMap from '@/components/Maps/MiniMap.vue'
 
 const { deleteRestaurant } = useApiEndpoints()
 const router = useRouter()
@@ -222,6 +237,7 @@ const fileInput = ref(null)
 const operatingHours = ref({})
 const restaurantCategories = ref([])
 const { fetchRestaurantCategories } = useCategories()
+const selectedCoordinates = ref(props.initialData?.coordinates || [])
 
 onMounted(async () => {
   restaurantCategories.value = await fetchRestaurantCategories()
@@ -239,6 +255,7 @@ const restaurantFormSchema = toTypedSchema(
     ratings: z.number().min(0).max(5).optional(),
     status: z.string().optional(),
     category: z.string().optional(),
+    coordinates: z.string().optional(),
   })
 )
 
@@ -255,6 +272,7 @@ const { handleSubmit, resetForm, setFieldValue } = useForm({
     ratings: props.initialData?.ratings || 0,
     status: props.initialData?.status || 'active',
     category: props.initialData?.category || '',
+    coordinates: props.initialData?.coordinates?.join(', ') || '',
   },
 })
 
@@ -294,6 +312,10 @@ const handleDelete = async () => {
   }
 }
 
+watch(selectedCoordinates, (newCoordinates) => {
+  setFieldValue('coordinates', newCoordinates.join(', '))
+})
+
 const triggerFileInput = () => {
   fileInput.value.click()
 }
@@ -319,6 +341,7 @@ const onSubmit = handleSubmit((values) => {
   formData.append('ratings', values.ratings ?? '');
   formData.append('status', values.status);
   formData.append('category', values.category ?? '');
+  formData.append('coordinates', JSON.stringify(selectedCoordinates.value) || undefined);
 
   if (operatingHours.value) {
     formData.append('operating_hours', JSON.stringify(operatingHours.value));
@@ -334,12 +357,6 @@ const onSubmit = handleSubmit((values) => {
   // Append image if it exists
   if (imageFile.value) {
     formData.append('image', imageFile.value);
-  }
-
-  // Log the contents of FormData for debugging
-  console.log('FINAL FormData Contents:');
-  for (const [key, value] of formData.entries()) {
-    console.log(`${key}:`, value);
   }
 
   emit('submit', formData);
