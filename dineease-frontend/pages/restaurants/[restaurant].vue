@@ -158,7 +158,7 @@
         </div>
 
         <!-- Mapbox Map for Coordinates -->
-        <div class="w-full">
+        <div v-if="coordinates" class="w-full">
           <h2 class="flex items-center gap-1 text-lg font-semibold">
             <MapPin class="w-4 h-4" />
             {{ restaurant.location }}
@@ -188,8 +188,7 @@ import { sortedOperatingHours } from '~/lib/timeUtils';
   )
 
   const coordinates = computed(() => {
-    console.log("IDK", restaurant.value)
-    return restaurant.value?.coordinates || []
+    return restaurant.value?.coordinates || null
 })
 
 const breadcrumbItems = ref([

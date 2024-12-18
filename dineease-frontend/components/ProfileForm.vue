@@ -104,7 +104,7 @@ const props = defineProps({
 
 const emit = defineEmits(['submit'])
 
-const selectedCoordinates = ref(props.user.profile?.coordinates || [])
+const selectedCoordinates = ref(props.user.profile?.coordinates || [0, 0])
 
 // Validation schema
 const accountFormSchema = toTypedSchema(
@@ -123,7 +123,7 @@ const { handleSubmit, setFieldValue } = useForm({
     address: props.user.profile?.address || '',
     city: props.user.profile?.city || '',
     province: props.user.profile?.province || '',
-    coordinates: props.user.profile?.coordinates?.join(', ') || '',
+    coordinates: props.user.profile?.coordinates?.join(', ') || '0, 0',
   },
 })
 

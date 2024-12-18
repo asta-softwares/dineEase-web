@@ -237,7 +237,7 @@ const fileInput = ref(null)
 const operatingHours = ref({})
 const restaurantCategories = ref([])
 const { fetchRestaurantCategories } = useCategories()
-const selectedCoordinates = ref(props.initialData?.coordinates || [])
+const selectedCoordinates = ref(props.initialData?.coordinates || [0, 0])
 
 onMounted(async () => {
   restaurantCategories.value = await fetchRestaurantCategories()
@@ -272,7 +272,7 @@ const { handleSubmit, resetForm, setFieldValue } = useForm({
     ratings: props.initialData?.ratings || 0,
     status: props.initialData?.status || 'active',
     category: props.initialData?.category || '',
-    coordinates: props.initialData?.coordinates?.join(', ') || '',
+    coordinates: props.initialData?.coordinates?.join(', ') || '0, 0',
   },
 })
 
