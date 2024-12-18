@@ -104,7 +104,7 @@ const props = defineProps({
 
 const emit = defineEmits(['submit'])
 
-const selectedCoordinates = ref(props.user.profile?.coordinates || [0, 0])
+const selectedCoordinates = ref(props.user.profile?.coordinates || [])
 
 // Validation schema
 const accountFormSchema = toTypedSchema(

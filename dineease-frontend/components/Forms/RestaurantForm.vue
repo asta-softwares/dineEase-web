@@ -85,7 +85,7 @@
         <FormItem>
           <FormLabel>Ratings</FormLabel>
           <FormControl>
-            <Input type="number" step="0.5" min="0" max="5" placeholder="Ratings (0.0 - 5.0)" v-bind="componentField" />
+            <Input type="number" step="0.1" min="0" max="5" placeholder="Ratings (0.0 - 5.0)" v-bind="componentField" />
           </FormControl>
           <FormMessage />
         </FormItem>
@@ -237,7 +237,7 @@ const fileInput = ref(null)
 const operatingHours = ref({})
 const restaurantCategories = ref([])
 const { fetchRestaurantCategories } = useCategories()
-const selectedCoordinates = ref(props.initialData?.coordinates || [0, 0])
+const selectedCoordinates = ref(props.initialData?.coordinates || [])
 
 onMounted(async () => {
   restaurantCategories.value = await fetchRestaurantCategories()
@@ -254,7 +254,7 @@ const restaurantFormSchema = toTypedSchema(
     telephone: z.string().min(10, 'Telephone is required'),
     ratings: z.number().min(0).max(5).optional(),
     status: z.string().optional(),
-    category: z.string().optional(),
+    category: z.any().optional(),
     coordinates: z.string().optional(),
   })
 )

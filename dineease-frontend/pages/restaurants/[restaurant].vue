@@ -188,7 +188,7 @@ import { sortedOperatingHours } from '~/lib/timeUtils';
   )
 
   const coordinates = computed(() => {
-    return restaurant.value?.coordinates || null
+    return restaurant.value?.coordinates || []
 })
 
 const breadcrumbItems = ref([

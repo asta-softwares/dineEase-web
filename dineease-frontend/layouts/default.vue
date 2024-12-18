@@ -9,16 +9,6 @@
     <!-- Main Content Wrapper -->
     <div class="relative z-10 max-w-screen-xl w-full mx-auto p-4 min-h-full h-auto">
       
-      <!-- Tabs Navigation -->
-      <!-- <Tabs v-if="showTabs" :default-value="getDefaultTab()" class="space-y-4 p-4">
-        <TabsList>
-          <TabsTrigger value="orders" @click="navigateTo('/orders/')">Orders</TabsTrigger>
-          <TabsTrigger value="restaurants" @click="navigateTo('/restaurants/')">Restaurants</TabsTrigger>
-          <TabsTrigger value="menu" @click="navigateTo('/menus/')">Menu</TabsTrigger>
-          <TabsTrigger value="promo" @click="navigateTo('/promos/')">Promo</TabsTrigger>
-        </TabsList>
-      </Tabs> -->
-
       <!-- Loading Skeleton -->
       <div v-if="loading" class="splash-screen">
         <div class="flex flex-col items-center justify-center gap-y-4">
@@ -63,34 +53,6 @@ const error = ref(null)
 
 // Computed User State (Reactive)
 const user = computed(() => userStore.user)
-
-// Show Tabs Condition
-const showTabs = computed(() => {
-  const normalizedPath = route.path.replace(/\/$/, '')
-  return ['/', '/orders', '/restaurants', '/menus', '/promos'].includes(normalizedPath)
-})
-
-const getDefaultTab = () => {
-  const normalizedPath = route.path.replace(/\/$/, '');
-
-  switch (normalizedPath) {
-    case '/orders':
-      return 'orders';
-    case '/restaurants':
-      return 'restaurants';
-    case '/menus':
-      return 'menu';
-    case '/promos':
-      return 'promo';
-    default:
-      return 'overview';
-  }
-};
-
-// Function to Navigate to Specific Path
-const navigateTo = (path) => {
-  router.push(path)
-}
 
 // Load User Data
 const { data, pending, error: fetchError } = await useAsyncData('user-data', async () => {

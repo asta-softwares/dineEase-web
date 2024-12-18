@@ -5,8 +5,13 @@
         <h2 class="text-3xl font-bold tracking-tight">Order List</h2>
       </div>
 
+      <!-- Display Skeleton Loader while loading -->
+      <div v-if="isLoading">
+        <SkeletonLoader :columns="1" item-width="100%" item-height="150px" text-width="100%" text-height="16px" :itemsCount="4" />
+      </div>
+
       <!-- Orders Grid -->
-      <div v-if="orders.length" class="grid gap-4">
+      <div v-else-if="orders.length" class="grid gap-4">
         <Card v-for="order in orders" :key="order.id" class="p-4">
           <CardHeader>
             <CardTitle class="text-lg font-semibold">Order #{{ order.id }}</CardTitle>
@@ -58,8 +63,10 @@ import { ref, onMounted } from 'vue'
 import { useOrderApiEndpoints } from '~/composables/useOrderApi'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import SkeletonLoader from '@/components/Skeleton/SkeletonLoading.vue'
 
 const orders = ref([])
+const isLoading = ref(true) // Loading state
 const { fetchOrders, updateOrderStatus } = useOrderApiEndpoints()
 
 // Fetch data when the component mounts
@@ -69,6 +76,8 @@ onMounted(async () => {
     console.log(orders.value)
   } catch (error) {
     console.error('Error fetching data:', error)
+  } finally {
+    isLoading.value = false
   }
 })
 
