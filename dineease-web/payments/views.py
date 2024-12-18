@@ -5,7 +5,20 @@ from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 
+stripe_status_mapping = {
+    'requires_payment_method': 'pending',
+    'requires_confirmation': 'pending',
+    'requires_action': 'pending',
+    'processing': 'pending',
+    'requires_capture': 'pending',
+    'succeeded': 'completed',
+    'canceled': 'failed',
+    'failed': 'failed',
+    'refunded': 'refunded',
+}
 
 class OrderViewSet(viewsets.ModelViewSet):
     """
@@ -82,11 +95,13 @@ class CreateOrderView(APIView):
             if promo:
                 PromoUsage.objects.create(promo=promo, customer=customer, status='pending')
 
-            # Initialize Payment
+            stripe_status = data['payment']['payment_status']
+            payment_status = stripe_status_mapping.get(stripe_status, 'pending')
+
             payment = Payment.objects.create(
                 order=order,
                 payment_method=data['payment']['payment_method'],
-                payment_status='pending',  # Pending until payment is processed
+                payment_status=payment_status,
                 amount_paid=data['payment']['amount_paid'],
                 payment_gateway=data['payment']['payment_gateway'],
                 transaction_id=data['payment']['transaction_id']
@@ -159,33 +174,73 @@ class UpdatePaymentStatusView(APIView):
         
 class UpdateOrderStatusView(APIView):
     def post(self, request, order_id):
-        """
-        Accept or reject an order based on admin decision.
-        """
         try:
             order = Order.objects.get(id=order_id)
 
-            # Check payment status before allowing order acceptance
             if order.status == "pending" and hasattr(order, "payment"):
                 if order.payment.payment_status != "completed":
                     return Response({"error": "Cannot accept order. Payment is not approved."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Get action from request (accept or reject)
             action = request.data.get("action")
-            if action not in ["accept", "reject"]:
-                return Response({"error": "Invalid action. Use 'accept' or 'reject'."}, status=status.HTTP_400_BAD_REQUEST)
+            if action not in ["accept", "reject", "complete"]:
+                return Response({"error": "Invalid action. Use 'accept', 'reject', or 'complete'."}, status=status.HTTP_400_BAD_REQUEST)
 
             if action == "accept":
                 order.status = "confirmed"
-                order.save()
-                return Response({"message": "Order accepted successfully"}, status=status.HTTP_200_OK)
-
+                message = "Your order has been accepted!"
             elif action == "reject":
                 order.status = "cancelled"
-                order.save()
-                return Response({"message": "Order rejected successfully"}, status=status.HTTP_200_OK)
+                message = "Your order has been rejected."
+            elif action == "complete":
+                order.status = "completed"
+                message = "Your order has been completed."
+
+            order.save()
+
+            # Send notification to the user
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"user_{order.customer.id}",
+                {
+                    'type': 'send_order_status',
+                    'message': message,
+                    'status': order.status
+                }
+            )
+
+            return Response({"message": f"Order {action}ed successfully"}, status=status.HTTP_200_OK)
 
         except Order.DoesNotExist:
             return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+from django.conf import settings
+import stripe
+from rest_framework.decorators import api_view
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+@api_view(['POST'])
+def create_payment_intent(request):
+    try:
+        amount = int(request.data.get('amount'))  # Amount in cents
+        currency = 'usd'  # Change the currency as needed
+
+        payment_intent = stripe.PaymentIntent.create(
+            amount=amount,
+            currency=currency,
+            metadata={'integration_check': 'accept_a_payment'}
+        )
+
+        return Response({'clientSecret': payment_intent.client_secret}, status=status.HTTP_200_OK)
+    except stripe.error.StripeError as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['POST'])
+def refund_payment(request):
+    try:
+        payment_intent_id = request.data.get('payment_intent_id')
+        refund = stripe.Refund.create(payment_intent=payment_intent_id)
+        return Response({'message': 'Refund successful', 'refund': refund}, status=status.HTTP_200_OK)
+    except stripe.error.StripeError as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

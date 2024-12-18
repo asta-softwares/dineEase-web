@@ -111,6 +111,7 @@ class Promo(models.Model):
     discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPES, default='percentage')
     # image = models.ImageField(upload_to='promo_images/', blank=True, null=True)
     usage_limit = models.PositiveIntegerField(null=True, blank=True)
+    usage_limit_per_customer = models.PositiveIntegerField(null=True, blank=True)
     usage_count = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=10, choices=STATUSES, default='active')
     start_date = models.DateField(null=True, blank=True)
@@ -136,8 +137,8 @@ class Promo(models.Model):
         """Check if the promo is valid and can be used."""
         if self.status != 'active':
             return False
-        if self.usage_limit is not None and self.usage_count >= self.usage_limit:
-            return False
+        # if self.usage_limit is not None and self.usage_count >= self.usage_limit:
+        #     return False
         return True
 
     def increment_usage(self):

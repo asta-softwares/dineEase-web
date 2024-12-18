@@ -30,6 +30,7 @@ class Order(models.Model):
         ('confirmed', 'Confirmed'),
         ('preparing', 'Preparing'),
         ('delivered', 'Delivered'),
+        ('completed', 'Completed'),
         ('cancelled', 'Cancelled')
     ])
     order_time = models.DateTimeField(auto_now_add=True)

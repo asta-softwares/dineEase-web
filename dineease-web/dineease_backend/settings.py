@@ -23,7 +23,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-2i748#zpet2n@gsu6%(7e3$!0zc702b3l@5v$vgm1=oh6$i9ca'
 STRIPE_WEBHOOK_SECRET = "whsec_your_secret_key"
-STRIPE_SECRET_KEY = ""
+ASGI_APPLICATION = 'dineease_backend.asgi.application'
+STRIPE_SECRET_KEY = "sk_test_51QMpBEAECjFQcoAi6KVOnSrIU5YACJUObWmvoXuWBwXAhfvrxqA0Jo1aqBINPWxrl9NV0KDTu8mUpjyuPPIXzSZm00xPGMb3Ys"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -35,6 +36,7 @@ SITE_ID = 1
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -51,6 +53,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'mapwidgets',
     'django.contrib.gis',
+    'channels',
 ]
 
 REST_FRAMEWORK = {
@@ -63,11 +66,20 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  # Adjust as needed
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),    # Adjust as needed
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("redis", 6379)],  # Docker service name for Redis
+        },
+    },
 }
 
 MIDDLEWARE = [

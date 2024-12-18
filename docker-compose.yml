@@ -21,8 +21,11 @@ services:
       - ./dineease-web:/app
       - static:/app/static
       - media:/app/media
+    ports:
+      - "8000:8000"
     depends_on:
       - db
+      - redis
     networks:
       - back-tier
     environment:
@@ -57,6 +60,14 @@ services:
     depends_on:
       - frontend
       - backend
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - back-tier
 
 volumes:
   static:
