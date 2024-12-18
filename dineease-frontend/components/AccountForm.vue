@@ -166,17 +166,13 @@ const { handleSubmit, setFieldValue } = useForm({
 const onSubmit = handleSubmit(async (values) => {
   try {
     const payload = {
-      first_name: props.user.first_name || '',
-      last_name: props.user.last_name || '',
+      first_name: values.first_name || '',
+      last_name: values.last_name || '',
       current_password: values.current_password || undefined,
       new_password: values.new_password || undefined,
       confirm_password: values.confirm_password || undefined,
       profile: {
-        phone: props.user.profile?.phone || undefined,
-        address: values.address || undefined,
-        city: values.city || undefined,
-        province: values.province || undefined,
-        coordinates: selectedCoordinates.value || undefined,
+        phone: values?.phone || undefined,
       },
     }
 
