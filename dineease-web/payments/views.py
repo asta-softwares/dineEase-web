@@ -95,6 +95,7 @@ class CreateOrderView(APIView):
             if promo:
                 PromoUsage.objects.create(promo=promo, customer=customer, status='pending')
 
+            # Create Payment
             stripe_status = data['payment']['payment_status']
             payment_status = stripe_status_mapping.get(stripe_status, 'pending')
 
@@ -105,6 +106,17 @@ class CreateOrderView(APIView):
                 amount_paid=data['payment']['amount_paid'],
                 payment_gateway=data['payment']['payment_gateway'],
                 transaction_id=data['payment']['transaction_id']
+            )
+
+            # Send WebSocket notification to the user
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"user_{customer.id}",
+                {
+                    'type': 'send_order_status',
+                    'message': f"New order #{order.id} has been created!",
+                    'status': order.status,
+                }
             )
 
             return Response({

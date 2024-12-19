@@ -71,62 +71,70 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useOrderApiEndpoints } from '~/composables/useOrderApi'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import SkeletonLoader from '@/components/Skeleton/SkeletonLoading.vue'
+import { useOrderApiEndpoints } from '~/composables/useOrderApi';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import SkeletonLoader from '@/components/Skeleton/SkeletonLoading.vue';
+import { useWebSocket } from '@/lib/websocket';
+import { useUserStore } from '@/stores/user'
 
-const orders = ref([])
-const isLoading = ref(true)
-const pollingInterval = ref(null) // For storing the interval ID
-const { fetchOrders, updateOrderStatus } = useOrderApiEndpoints()
+const orders = ref([]);
+const isLoading = ref(true);
+const userStore = useUserStore()
+const { fetchOrders, updateOrderStatus } = useOrderApiEndpoints();
 
-// Fetch initial data when the component mounts
+const userId = computed(() => userStore.user?.id)
+const { connectWebSocket, closeWebSocket } = useWebSocket(userId.value, handleWebSocketMessage);
+
 onMounted(async () => {
-  await loadOrders()
-  startPolling()
-})
+  await loadOrders();
+  connectWebSocket();
+});
 
-// Cleanup the polling interval when the component is unmounted
 onUnmounted(() => {
-  stopPolling()
-})
+  closeWebSocket();
+});
 
-// Function to fetch orders and append new ones
 async function loadOrders() {
   try {
-    const fetchedOrders = await fetchOrders()
-    appendNewOrders(fetchedOrders)
+    const fetchedOrders = await fetchOrders();
+    appendNewOrders(fetchedOrders);
   } catch (error) {
-    console.error('Error fetching data:', error)
+    console.error('Error fetching data:', error);
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
 }
 
 // Append new orders to the list and sort by recency
 function appendNewOrders(fetchedOrders) {
-  const existingOrderIds = orders.value.map(order => order.id)
-  let newOrderAdded = false
+  const existingOrderIds = orders.value.map((order) => order.id);
+  let newOrderAdded = false;
 
   // Append only new orders
-  fetchedOrders.forEach(order => {
+  fetchedOrders.forEach((order) => {
     if (!existingOrderIds.includes(order.id)) {
-      orders.value.push(order)
-      newOrderAdded = true
+      orders.value.push(order);
+      newOrderAdded = true;
     }
-  })
+  });
 
   if (newOrderAdded) {
-    alert("New Order Received!")
+    alert('New Order Received!');
   }
 
   // Sort orders by order_time in descending order (most recent first)
-  orders.value.sort((a, b) => new Date(b.order_time) - new Date(a.order_time))
+  orders.value.sort((a, b) => new Date(b.order_time) - new Date(a.order_time));
 }
 
-// Determine if an order is new (less than 5 minutes old)
+// Handle incoming WebSocket messages
+function handleWebSocketMessage(data) {
+  console.log("DATA", data)
+  if (data.status === 'pending') {
+    loadOrders(); // Fetch new orders when notified
+  }
+}
+
 function isNewOrder(orderTime) {
   const now = new Date()
   const orderDate = new Date(orderTime)
@@ -134,52 +142,39 @@ function isNewOrder(orderTime) {
   return diffInMinutes <= 5
 }
 
-// Start polling for new orders every 10 seconds
-function startPolling() {
-  pollingInterval.value = setInterval(() => {
-    loadOrders()
-  }, 10000) // Poll every 10 seconds
-}
-
-// Stop polling when the component is unmounted
-function stopPolling() {
-  if (pollingInterval.value) {
-    clearInterval(pollingInterval.value)
-  }
-}
-
 // Accept Order
 async function acceptOrder(orderId) {
   try {
-    await updateOrderStatus(orderId, { action: 'accept' })
-    const order = orders.value.find((o) => o.id === orderId)
-    if (order) order.status = 'confirmed'
-    console.log(`Order ${orderId} accepted.`)
+    await updateOrderStatus(orderId, { action: 'accept' });
+    const order = orders.value.find((o) => o.id === orderId);
+    if (order) order.status = 'confirmed';
+    console.log(`Order ${orderId} accepted.`);
   } catch (error) {
-    console.error('Failed to accept order:', error)
+    console.error('Failed to accept order:', error);
   }
 }
 
+// Complete Order
 async function completeOrder(orderId) {
   try {
-    await updateOrderStatus(orderId, { action: 'complete' })
-    const order = orders.value.find((o) => o.id === orderId)
-    if (order) order.status = 'completed'
-    console.log(`Order ${orderId} has been completed.`)
+    await updateOrderStatus(orderId, { action: 'complete' });
+    const order = orders.value.find((o) => o.id === orderId);
+    if (order) order.status = 'completed';
+    console.log(`Order ${orderId} has been completed.`);
   } catch (error) {
-    console.error('Failed to complete order:', error)
+    console.error('Failed to complete order:', error);
   }
 }
 
 // Reject Order
 async function rejectOrder(orderId) {
   try {
-    await updateOrderStatus(orderId, { action: 'reject' })
-    const order = orders.value.find((o) => o.id === orderId)
-    if (order) order.status = 'cancelled'
-    console.log(`Order ${orderId} rejected.`)
+    await updateOrderStatus(orderId, { action: 'reject' });
+    const order = orders.value.find((o) => o.id === orderId);
+    if (order) order.status = 'cancelled';
+    console.log(`Order ${orderId} rejected.`);
   } catch (error) {
-    console.error('Failed to reject order:', error)
+    console.error('Failed to reject order:', error);
   }
 }
 </script>

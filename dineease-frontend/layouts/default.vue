@@ -42,16 +42,12 @@ import { useRouter, useRoute } from 'vue-router'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Toaster from '@/components/ui/toast/Toaster.vue'
 
-// Store and Router Instances
 const userStore = useUserStore()
 const router = useRouter()
 const route = useRoute()
-
-// State Management
 const loading = ref(true)
 const error = ref(null)
 
-// Computed User State (Reactive)
 const user = computed(() => userStore.user)
 
 // Load User Data
@@ -62,7 +58,6 @@ const { data, pending, error: fetchError } = await useAsyncData('user-data', asy
   return userStore.user
 })
 
-// Handle Loading State and Errors
 watchEffect(() => {
   if (!pending.value) {
     setTimeout(() => {

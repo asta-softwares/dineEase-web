@@ -95,7 +95,7 @@ export function useAuthApi() {
   
     userStore.clearUser();
   
-    window.location.href = "/login";
+    // window.location.href = "/login";
   };
 
   const logout = async () => {
