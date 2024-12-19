@@ -3,9 +3,9 @@
       <div class="flex h-16 items-center px-4 max-w-screen-xl mx-auto">
         <!-- Clickable Logo and Tagline -->
         <NuxtLink to="/" class="flex items-center">
-          <img class="w-[50px]" src="/images/logo.svg" alt="DineEase Logo" />
+          <img class="w-[40px]" src="/images/logo.svg" alt="DineEase Logo" />
           <div class="flex flex-col ml-2 gap-y-1">
-            <img class="w-[130px]" src="/images/logo-text.svg" alt="DineEase" />
+            <img class="w-[110px]" src="/images/logo-text.svg" alt="DineEase" />
             <span class="text-[10px] font-semibold">CRAVE . CLICK . ENJOY</span>
           </div>
         </NuxtLink>

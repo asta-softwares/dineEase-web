@@ -58,23 +58,45 @@ export function useAuthApi() {
 
   const refreshAccessToken = async () => {
     if (!refreshToken.value) {
-      console.error("No refresh token found. Please log in again.")
-      return false
+      console.error("No refresh token found. Please log in again.");
+      redirectToLogin();
+      return false;
     }
   
-    const { data, error } = await useFetch(baseUrl + 'token/refresh/', {
-      method: 'POST',
-      body: { refresh: refreshToken.value },
-    })
+    try {
+      const { data, error } = await useFetch(baseUrl + 'token/refresh/', {
+        method: 'POST',
+        body: { refresh: refreshToken.value },
+      });
   
-    if (error.value) {
-      console.error("Error refreshing access token:", error.value)
-      return false
+      if (error.value) {
+        console.error("Error refreshing access token:", error.value);
+        if (error.value.statusCode === 401 || error.value.data?.code === "token_not_valid") {
+          console.error("Refresh token is invalid or expired. Redirecting to login.");
+          redirectToLogin();
+        }
+        return false;
+      }
+  
+      authToken.value = data.value.access;
+      refreshToken.value = data.value.refresh;
+      return true;
+    } catch (err) {
+      console.error("Unexpected error refreshing access token:", err);
+      // redirectToLogin();
+      return false;
     }
+  };
+
+  const redirectToLogin = () => {
+    console.log("GO HERE")
+    authToken.value = null;
+    refreshToken.value = null;
   
-    authToken.value = data.value.access
-    return true
-  }
+    userStore.clearUser();
+  
+    window.location.href = "/login";
+  };
 
   const logout = async () => {
     if (!authToken.value) {
@@ -93,11 +115,7 @@ export function useAuthApi() {
       console.error("Error logging out on server:", error)
     } finally {
       
-      authToken.value = null
-      refreshToken.value = null
-  
-      // Clear user data from the store
-      userStore.clearUser()
+      redirectToLogin()
     }
   }
 

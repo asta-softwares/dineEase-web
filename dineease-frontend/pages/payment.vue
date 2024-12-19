@@ -26,6 +26,8 @@ import { loadStripe } from '@stripe/stripe-js'
 import { ref, onMounted } from 'vue'
 import { Button } from '@/components/ui/button'
 import { useOrderApiEndpoints } from '@/composables/useOrderApi'
+const config = useRuntimeConfig()
+const baseUrl = config.public.apiBaseUrl
 
 const { createOrder, createPaymentIntent } = useOrderApiEndpoints()
 
@@ -37,25 +39,29 @@ const errorMessage = ref('')
 const notification = ref('')
 
 onMounted(() => {
-  cardElement.mount('#card-element')
+  cardElement.mount('#card-element');
 
-  const userId = 1
+  const userId = 1;
+  const baseUrl = config.public.apiBaseUrl;
+  
+  const wsProtocol = baseUrl.startsWith('https') ? 'wss://' : 'ws://';
+  
+  const host = new URL(baseUrl).host;
 
-  const socket = new WebSocket(`ws://localhost/ws/orders/${userId}/`)
+  console.log(baseUrl, host, wsProtocol)
+  
+  // Construct the WebSocket URL
+  const socket = new WebSocket(`${wsProtocol}${host}/ws/orders/${userId}/`);
 
   socket.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  notification.value += `\n${data.message}`;
-}
+    const data = JSON.parse(event.data);
+    notification.value += `\n${data.message}`;
+  };
 
   socket.onopen = () => console.log('WebSocket connected');
-socket.onerror = (error) => console.error('WebSocket error:', error);
-socket.onclose = () => console.log('WebSocket closed');
-
-  socket.onclose = () => {
-    console.log('WebSocket closed')
-  }
-})
+  socket.onerror = (error) => console.error('WebSocket error:', error);
+  socket.onclose = () => console.log('WebSocket closed');
+});
 
 onUnmounted(() => {
   if (socket) {

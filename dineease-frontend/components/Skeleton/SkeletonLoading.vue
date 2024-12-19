@@ -35,7 +35,7 @@ const skeletonItems = computed(() => Array.from({ length: props.itemsCount }))
 </script>
 
 <template>
-  <div class="grid gap-x-4 gap-y-8" :style="{ gridTemplateColumns: `repeat(${columns}, 1fr)` }">
+  <div class="grid gap-x-4 gap-y-4" :style="{ gridTemplateColumns: `repeat(${columns}, 1fr)` }">
     <div v-for="(_, index) in skeletonItems" :key="index" class="flex flex-col space-y-2">
       <Skeleton :class="`h-[${itemHeight}] w-full rounded-xl`" />
       <div class="space-y-2">
