@@ -59,6 +59,7 @@ onUnmounted(() => {
 const orderData = {
   amount: 5000, // $50.00 in cents
   restaurant_id: 1,
+  owner_id: 1,
   order_total: 50.0,
   is_delivery: true,
   order_type: 'delivery',

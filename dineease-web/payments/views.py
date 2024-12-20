@@ -51,6 +51,7 @@ class CreateOrderView(APIView):
             data = request.data
             customer = request.user
             promo_id = data.get('promo_id')
+            owner_id = data['owner_id']
 
             # Validate Promo
             promo = None
@@ -111,11 +112,16 @@ class CreateOrderView(APIView):
             # Send WebSocket notification to the user
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
-                f"user_{customer.id}",
+                f"restaurant_{owner_id}",
                 {
-                    'type': 'send_order_status',
-                    'message': f"New order #{order.id} has been created!",
+                    'type': 'send_new_order',
+                    'order_id': order.id,
                     'status': order.status,
+                    'order_details': {
+                        'customer': customer.username,
+                        'total': order.order_total,
+                        'order_time': order.created_at.isoformat(),
+                    }
                 }
             )
 
@@ -212,7 +218,7 @@ class UpdateOrderStatusView(APIView):
             # Send notification to the user
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
-                f"user_{order.customer.id}",
+                f"order_{order.customer.id}",
                 {
                     'type': 'send_order_status',
                     'message': message,

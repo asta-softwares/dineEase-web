@@ -84,7 +84,7 @@ const userStore = useUserStore()
 const { fetchOrders, updateOrderStatus } = useOrderApiEndpoints();
 
 const userId = computed(() => userStore.user?.id)
-const { connectWebSocket, closeWebSocket } = useWebSocket(userId.value, handleWebSocketMessage);
+const { connectWebSocket, closeWebSocket } = useWebSocket(`restaurant/${userId.value}`, handleWebSocketMessage);
 
 onMounted(async () => {
   await loadOrders();
