@@ -1,6 +1,6 @@
 from rest_framework import viewsets, generics, status
 from rest_framework.views import APIView
-from .models import Restaurant, Promo, Menu, RestaurantImage, ExpiringToken
+from .models import Restaurant, Promo, Menu, RestaurantImage, ExpiringToken, VerificationCode
 from .serializers import RestaurantMiniSerializer, RestaurantSerializer, PromoSerializer, MenuSerializer, Category, CategorySerializer, RegisterSerializer, LoginSerializer, UserSerializer, UserUpdateSerializer, UserProfileSerializer, CustomTokenObtainPairSerializer
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
@@ -17,6 +17,7 @@ from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
 from django.contrib.auth import update_session_auth_hash
 from django.db import IntegrityError
+from .utils import send_confirmation_email
 
 class RestaurantViewSet(viewsets.ModelViewSet):
     serializer_class = RestaurantSerializer
@@ -222,7 +223,15 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         try:
             serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
+            user = self.perform_create(serializer)
+            
+            # Generate a 6-digit code
+            verification_code = VerificationCode.objects.create(user=user)
+            verification_code.generate_code()
+            
+            # Send the confirmation email
+            send_confirmation_email(user, verification_code.code)
+            
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except ValidationError as e:
@@ -233,6 +242,57 @@ class RegisterView(generics.CreateAPIView):
                 {"detail": "An unexpected error occurred during registration."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    def perform_create(self, serializer):
+        return serializer.save()
+
+class VerifyCodeView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        code = request.data.get('code')
+
+        if not email or not code:
+            return Response({"detail": "Email and code are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Find user by email
+            user = User.objects.get(email=email)
+
+            # Check if the provided code matches the user's verification code
+            if user.verification_code.code == code:
+                # Mark the user as verified or activate the account
+                user.is_active = True
+                user.save()
+                return Response({"detail": "Email confirmed successfully."}, status=status.HTTP_200_OK)
+            
+            return Response({"detail": "Invalid code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        except AttributeError:
+            return Response({"detail": "Verification code not found for this user."}, status=status.HTTP_400_BAD_REQUEST)
+        
+class ResendEmailView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+
+        try:
+            user = User.objects.get(email=email)
+            verification = VerificationCode.objects.get(user=user)
+
+            # Generate a new code
+            verification.generate_code()
+
+            # Resend the confirmation email
+            send_confirmation_email(user, verification.code)
+
+            return Response({"detail": "Verification code resent."}, status=status.HTTP_200_OK)
+        except (User.DoesNotExist, VerificationCode.DoesNotExist):
+            return Response({"detail": "User not found or no verification pending."}, status=status.HTTP_404_NOT_FOUND)
 
 class LoginView(APIView):
     serializer_class = LoginSerializer

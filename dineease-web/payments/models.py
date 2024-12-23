@@ -20,10 +20,10 @@ class PromoUsage(models.Model):
     def __str__(self):
         return f"{self.customer.username} attempted {self.promo.name} - {self.status}"
 class Order(models.Model):
-    customer = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    customer = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='orders')
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='orders')
     menu_items = models.ManyToManyField(Menu, through='OrderItem')
-    promo = models.ForeignKey(Promo, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')  # Applied promo
+    promo = models.ForeignKey(Promo, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
     order_total = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=50, choices=[
         ('pending', 'Pending'),

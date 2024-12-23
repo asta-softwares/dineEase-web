@@ -120,7 +120,7 @@ class RestaurantSerializer(serializers.ModelSerializer):
             'id', 'name', 'categories', 'service_type', 'image', 'city', 'province', 'email',
             'operating_hours', 'location', 'coordinates', 'distance', 'is_open',
             'priority_index', 'telephone', 'ratings', 'description', 'status', 'owner', 
-            'social_media_links',
+            'social_media_links', 'stripe_account_id',
             'promos', 'menus', 'images',
         ]
 
@@ -214,6 +214,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         phone = validated_data.pop('phone', None)
         type_of_user = validated_data.pop('type_of_user')
 
+        # Create user with is_active=False
         user = User.objects.create_user(
             username=validated_data.get('username') or email,
             email=email,
@@ -221,6 +222,8 @@ class RegisterSerializer(serializers.ModelSerializer):
             first_name=validated_data['first_name'],
             last_name=validated_data['last_name'],
         )
+        user.is_active = True  # Set is_active to False
+        user.save()
 
         # Create UserProfile with phone and type_of_user
         UserProfile.objects.create(user=user, phone=phone, type_of_user=type_of_user)
@@ -257,10 +260,14 @@ class LoginSerializer(serializers.Serializer):
         if not user:
             user = User.objects.filter(username=identifier).first()
 
-        # Validate password
-        if user and user.check_password(password):
-            data['user'] = user
-            return data
+        # Validate password and verification status
+        if user:
+            if not user.is_active:
+                raise serializers.ValidationError("User account is not verified. Please verify your email before logging in.")
+            
+            if user.check_password(password):
+                data['user'] = user
+                return data
 
         raise serializers.ValidationError("Incorrect username, email, or phone number, or password.")
     
@@ -322,10 +329,27 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer()
+    active_restaurant = serializers.SerializerMethodField()
+    has_pending_orders = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile', 'active_restaurant', 'has_pending_orders']
+
+    def get_active_restaurant(self, obj):
+        # Get the user's active restaurant
+        active_restaurant = obj.restaurants.filter(status='active').first()
+        if active_restaurant:
+            return {
+                'id': active_restaurant.id,
+                'name': active_restaurant.name,
+                'stripe_account_id': active_restaurant.stripe_account_id
+            }
+        return None
+
+    def get_has_pending_orders(self, obj):
+        # Check if the user has any pending orders
+        return obj.orders.filter(status='pending').exists()
 
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('profile', {})
@@ -338,7 +362,6 @@ class UserSerializer(serializers.ModelSerializer):
         profile.save()
 
         return instance
-    
 class UserUpdateSerializer(serializers.ModelSerializer):
     current_password = serializers.CharField(write_only=True, required=False)
     new_password = serializers.CharField(write_only=True, required=False)

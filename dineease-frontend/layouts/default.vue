@@ -2,30 +2,24 @@
   <div class="relative h-screen w-screen overflow-x-hidden">
     <div class="absolute inset-0 bg-short-bg bg-no-repeat bg-center opacity-20 -z-10"></div>
     <Toaster />
-    <NuxtLoadingIndicator />
 
-    <MainNavigation v-if="user" />
-
-    <!-- Main Content Wrapper -->
-    <div class="relative z-10 max-w-screen-xl w-full mx-auto p-4 min-h-full h-auto">
-      
-      <!-- Loading Skeleton -->
-      <div v-if="loading" class="splash-screen">
-        <div class="flex flex-col items-center justify-center gap-y-4">
-          <img src="/images/logo.svg" alt="Logo" class="splash-logo" />
-          <div class="splash-spinner"></div>
-        </div>
+    <!-- Loading Skeleton -->
+    <div v-if="loading" class="splash-screen">
+      <div class="flex flex-col items-center justify-center gap-y-4">
+        <img src="/images/logo.svg" alt="Logo" class="splash-logo" />
+        <div class="splash-spinner"></div>
       </div>
+    </div>
 
-      <!-- Error Placeholder -->
-      <div v-else-if="error" class="error-container">
-        <p class="error-text">{{ error }}</p>
-      </div>
+    <!-- Error Placeholder -->
+    <div v-else-if="error" class="error-container">
+      <p class="error-text">{{ error }}</p>
+    </div>
 
-      <!-- Main Content -->
-      <div v-else class="py-2">
-        <NuxtPage />
-      </div>
+    <!-- Main Content -->
+    <div v-else class="relative z-10 max-w-screen-xl w-full mx-auto p-4 min-h-full h-auto">
+      <MainNavigation v-if="user" />
+      <NuxtPage />
     </div>
 
     <!-- Footer -->
@@ -34,37 +28,30 @@
 </template>
 
 <script setup>
-import { ref, computed, watchEffect } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import MainNavigation from '@/components/MainNavigation.vue'
 import Footer from '@/components/Footer.vue'
-import { useRouter, useRoute } from 'vue-router'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Toaster from '@/components/ui/toast/Toaster.vue'
 
 const userStore = useUserStore()
-const router = useRouter()
-const route = useRoute()
 const loading = ref(true)
 const error = ref(null)
 
 const user = computed(() => userStore.user)
 
-// Load User Data
-const { data, pending, error: fetchError } = await useAsyncData('user-data', async () => {
-  if (!userStore.user) {
+onMounted(async () => {
+  try {
     await userStore.loadUser()
-  }
-  return userStore.user
-})
-
-watchEffect(() => {
-  if (!pending.value) {
+    error.value = null
+  } catch (err) {
+    console.error('Error loading user data:', err)
+    error.value = 'Failed to load user data. Please try again later.'
+  } finally {
     setTimeout(() => {
       loading.value = false
     }, 1000)
   }
-  error.value = fetchError.value
 })
 </script>
 

@@ -15,6 +15,7 @@
             </div>
           </div>
         </FormControl>
+        <FormDescription>Upload an image representing your restaurant. Recommended size: 300x300 pixels.</FormDescription>
         <FormMessage />
       </FormItem>
     </FormField>
@@ -28,6 +29,7 @@
           <FormControl>
             <Input type="text" placeholder="Restaurant name" v-bind="componentField" />
           </FormControl>
+          <FormDescription>Enter the official name of your restaurant.</FormDescription>
           <FormMessage />
         </FormItem>
       </FormField>
@@ -50,6 +52,7 @@
               </SelectGroup>
             </SelectContent>
           </Select>
+          <FormDescription>Specify if your restaurant offers dine-in, takeout, or both.</FormDescription>
           <FormMessage />
         </FormItem>
       </FormField>
@@ -61,6 +64,7 @@
           <FormControl>
             <Input type="text" placeholder="Restaurant location" v-bind="componentField" />
           </FormControl>
+          <FormDescription>Provide the full address of your restaurant.</FormDescription>
           <FormMessage />
         </FormItem>
       </FormField>
@@ -72,6 +76,7 @@
           <FormControl>
             <Input type="email" placeholder="Restaurant email" v-bind="componentField" />
           </FormControl>
+          <FormDescription>Enter a valid email address for customer inquiries.</FormDescription>
           <FormMessage />
         </FormItem>
       </FormField>
@@ -83,6 +88,7 @@
           <FormControl>
             <Input type="text" placeholder="Restaurant telephone" v-bind="componentField" />
           </FormControl>
+          <FormDescription>Provide a contact number for customers to reach your restaurant.</FormDescription>
           <FormMessage />
         </FormItem>
       </FormField>
@@ -94,6 +100,7 @@
           <FormControl>
             <Input type="number" step="0.1" min="0" max="5" placeholder="Ratings (0.0 - 5.0)" v-bind="componentField" />
           </FormControl>
+          <FormDescription>Provide a rating between 0 and 5 for your restaurant.</FormDescription>
           <FormMessage />
         </FormItem>
       </FormField>
@@ -115,92 +122,73 @@
               </SelectGroup>
             </SelectContent>
           </Select>
+          <FormDescription>Set the current status of your restaurant (Active or Inactive).</FormDescription>
           <FormMessage />
         </FormItem>
       </FormField>
 
-      
-    <!-- Category Field -->
-    <FormField v-slot="{ componentField }" name="category">
-      <FormItem>
-        <FormLabel>Category</FormLabel>
-        <FormControl>
-          <Select v-bind="componentField">
-            <FormControl>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-            </FormControl>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem v-for="category in restaurantCategories" :key="category.id" :value="category.id">
-                  {{ category.name }}
-                </SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </FormControl>
-        <FormMessage />
-      </FormItem>
-    </FormField>
-
+      <!-- Category Field -->
+      <FormField v-slot="{ componentField }" name="category">
+        <FormItem>
+          <FormLabel>Category</FormLabel>
+          <FormControl>
+            <Select v-bind="componentField">
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem v-for="category in restaurantCategories" :key="category.id" :value="category.id">
+                    {{ category.name }}
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </FormControl>
+          <FormDescription>Select a category that best describes your restaurant.</FormDescription>
+          <FormMessage />
+        </FormItem>
+      </FormField>
     </div>
-    <!-- Operating Hours Component -->
+
     <OperatingHours v-model="operatingHours" :data="initialData?.operating_hours" />
 
-     <!-- Coordinates Field -->
-     <FormField v-slot="{ componentField }" name="coordinates">
+    <!-- Coordinates Field -->
+    <FormField v-slot="{ componentField }" name="coordinates">
       <FormItem>
         <FormLabel>Coordinates</FormLabel>
         <FormControl>
           <Input type="text" placeholder="Coordinates (e.g., 125.404, 7.316)" v-bind="componentField" disabled />
         </FormControl>
-        <FormDescription>Your location coordinates in [longitude, latitude] format. Click on the map to change your location.</FormDescription>
+        <FormDescription>Your location coordinates in [longitude, latitude] format. Click on the map to set your location.</FormDescription>
         <FormMessage />
       </FormItem>
     </FormField>
 
     <MiniMap class="h-[500px] my-4" v-model="selectedCoordinates" :coordinates="selectedCoordinates" :is-edit-mode="true" />
 
+    <!-- Stripe Account Field -->
+    <FormField v-slot="{ componentField }" name="stripe_account_id">
+      <FormItem>
+        <FormLabel>Stripe Account</FormLabel>
+        <FormControl>
+          <Input type="text" v-bind="componentField" disabled />
+        </FormControl>
+        <FormDescription>Your Stripe account ID for receiving payments.</FormDescription>
+        <p v-if="!stripeAccountId" class="text-red-500">
+          You have not set up your Stripe account. 
+          <a href="#" @click.prevent="handleStripeOnboarding" class="text-blue-500 underline">
+            Click here to register.
+          </a>
+        </p>
+      </FormItem>
+    </FormField>
+
     <!-- Submit Button -->
     <div class="mt-6 flex gap-4 items-start">
       <Button type="submit">{{ isEditMode ? 'Update Restaurant' : 'Create Restaurant' }}</Button>
-    
-      <div class="flex items-start gap-4 relative">
-        <!-- Delete Button -->
-        <Button 
-          v-if="isEditMode" 
-          type="button" 
-          variant="destructive" 
-          @click="toggleDeleteConfirmation"
-        >
-          Delete Restaurant
-        </Button>
-    
-        <!-- Confirmation Prompt -->
-        <div v-if="showDeleteConfirmation" class="flex flex-col gap-y-4 ml-4">
-          <span>Are you sure you want to delete this restaurant?</span>
-          <div class="flex items-center gap-2">
-            <Button 
-              type="button" 
-              variant="destructive" 
-              size="sm" 
-              @click="handleDelete"
-              :disabled="isDeleting"
-            >
-              {{ isDeleting ? 'Deleting...' : 'Confirm Delete' }}
-            </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm" 
-              @click="toggleDeleteConfirmation"
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </div>
     </div>
   </form>
 </template>
@@ -220,7 +208,7 @@ import { useApiEndpoints } from '@/composables/useApiRestaurants'
 import { toast } from '@/components/ui/toast'
 import MiniMap from '@/components/Maps/MiniMap.vue'
 
-const { deleteRestaurant } = useApiEndpoints()
+const { deleteRestaurant, createStripeOnboardingLink } = useApiEndpoints()
 const router = useRouter()
 const route = useRoute()
 const isDeleting = ref(false)
@@ -247,12 +235,23 @@ const operatingHours = ref({})
 const restaurantCategories = ref([])
 const { fetchRestaurantCategories } = useCategories()
 const selectedCoordinates = ref(props.initialData?.coordinates || [])
+const stripeAccountId = ref(props.initialData?.stripe_account_id || '');
 
 onMounted(async () => {
   restaurantCategories.value = await fetchRestaurantCategories()
 })
 
-// Define the validation schema
+const handleStripeOnboarding = async () => {
+  const restaurantId = props.initialData?.id;
+  if (!restaurantId) return;
+
+  const { success, onboardingUrl } = await createStripeOnboardingLink(restaurantId);
+
+  if (success && onboardingUrl) {
+    window.location.href = onboardingUrl;
+  }
+};
+
 const restaurantFormSchema = toTypedSchema(
   z.object({
     name: z.string().min(2, 'Name is required'),
@@ -265,10 +264,11 @@ const restaurantFormSchema = toTypedSchema(
     status: z.string().optional(),
     category: z.any().optional(),
     coordinates: z.string().optional(),
+    coordinates: z.string().optional(),
+    stripe_account_id: z.string().optional(),
   })
 )
 
-// Initialize the form with `useForm`
 const { handleSubmit, resetForm, setFieldValue } = useForm({
   validationSchema: restaurantFormSchema,
   initialValues: {
@@ -282,6 +282,7 @@ const { handleSubmit, resetForm, setFieldValue } = useForm({
     status: props.initialData?.status || 'active',
     category: props.initialData?.category || '',
     coordinates: props.initialData?.coordinates?.join(', ') || '0, 0',
+    stripe_account_id: props.initialData?.stripe_account_id || ''
   },
 })
 
@@ -289,7 +290,6 @@ const toggleDeleteConfirmation = () => {
   showDeleteConfirmation.value = !showDeleteConfirmation.value
 }
 
-// Function to handle delete action
 const handleDelete = async () => {
   try {
     isDeleting.value = true

@@ -9,6 +9,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
 from django.utils.text import slugify
+import random
 
 class Category(models.Model):
     CATEGORY_TYPES = (
@@ -29,6 +30,7 @@ class Restaurant(models.Model):
     STATUSES = (
         ('active', 'Active'),
         ('inactive', 'Inactive'),
+        ('pending', 'Pending'),
         ('premium', 'Premium'),
     )
 
@@ -65,9 +67,10 @@ class Restaurant(models.Model):
     province = models.CharField(max_length=2, choices=CANADA_PROVINCE_CHOICES, null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
     telephone = models.CharField(max_length=15)
+    stripe_account_id = models.CharField(max_length=255, blank=True, null=True)
     ratings = models.FloatField(default=0.0)
     description = models.TextField(blank=True)
-    status = models.CharField(max_length=10, choices=STATUSES, default='active')
+    status = models.CharField(max_length=10, choices=STATUSES, default='pending')
     owner = models.ForeignKey(User , on_delete=models.CASCADE, related_name='restaurants')
     priority_index = models.PositiveIntegerField(null=True, blank=True)
     social_media_links = models.JSONField(
@@ -214,7 +217,6 @@ class UserProfile(models.Model):
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
-    email = models.EmailField(unique=True, null=True, blank=True)
     type_of_user = models.CharField(max_length=20, choices=USER_TYPES, default='customer')
     phone = models.CharField(max_length=15, unique=True)
     coordinates = gis_models.PointField(null=True, blank=True)
@@ -241,3 +243,13 @@ class ExpiringToken(Token):
             token.delete()
             token = cls.objects.create(user=user)
         return token
+    
+class VerificationCode(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='verification_code')
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def generate_code(self):
+        """Generate a random 6-digit code."""
+        self.code = str(random.randint(100000, 999999))
+        self.save()

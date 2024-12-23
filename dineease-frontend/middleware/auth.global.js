@@ -12,7 +12,7 @@ export default defineNuxtRouteMiddleware((to) => {
   }
 
   // Redirect to home/dashboard if already authenticated and trying to access the login or register page
-  if ((to.path === '/login' || to.path === '/register') && isAuthenticated()) {
+  if ((to.path === '/login' || to.path === '/register' || to.path === '/verify-email') && isAuthenticated()) {
     return navigateTo('/') // Redirect to home or dashboard
   }
 })

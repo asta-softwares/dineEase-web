@@ -203,3 +203,11 @@ MAP_WIDGETS = {
         }
     }
 }
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'email-smtp.us-east-2.amazonaws.com'  # Replace with your region's SMTP server
+EMAIL_PORT = 587  # STARTTLS port
+EMAIL_USE_TLS = True  # Enable STARTTLS
+EMAIL_HOST_USER = 'AKIAWQUOZJQN23M7KNDN'  # SES SMTP username
+EMAIL_HOST_PASSWORD = 'BJoQHk0LTx3dXvSh7TCiNjDTnbG6VWyKG3QOc8bQp5JR'  # SES SMTP password
+DEFAULT_FROM_EMAIL = 'DineEase <Dineeasecanada@gmail.com>'  # Verified email addressexit

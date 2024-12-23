@@ -32,7 +32,10 @@
         </div>
       </CardContent>
       <CardFooter class="flex flex-col gap-y-4">
-        <Button class="w-full" @click="handleLogin">Log in</Button>
+        <Button :disabled="isLoading" class="w-full flex items-center justify-center" @click="handleLogin">
+          <LoaderCircle v-if="isLoading" class="mr-2 h-4 w-4 animate-spin" />
+          Log in
+        </Button>
         <div class="text-sm text-center">
           Don't have an account? 
           <span class="text-blue-500 cursor-pointer" @click="goToRegister">Register</span>
@@ -53,29 +56,32 @@ import { Label } from '@/components/ui/label'
 import { toast } from '@/components/ui/toast'
 
 // Import icons from lucide-vue-next
-import { Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-vue-next'
+import { Eye as EyeIcon, EyeOff as EyeOffIcon, LoaderCircle } from 'lucide-vue-next'
 
 const identifier = ref('')
 const password = ref('')
 const errorMessage = ref('')
 const isPasswordVisible = ref(false) // State to toggle password visibility
 const { login } = useAuthApi()
+const isLoading = ref(false)
 const router = useRouter()
 
 const handleLogin = async () => {
   try {
-    errorMessage.value = '' // Reset error message
+    isLoading.value = true
+    errorMessage.value = ''
     const data = await login(identifier.value, password.value)
-    console.log(data)
     toast({
       title: 'Logged In Successfully!',
       description: 'You can now interact with your restaurant.',
     })
     localStorage.setItem('authToken', data.token)
-    router.push('/') // Redirect to a protected route or dashboard
+    router.push('/')
   } catch (error) {
     console.error(error)
     errorMessage.value = error.response?.data?.detail || 'Incorrect username or password.'
+  } finally {
+    isLoading.value = false
   }
 }
 

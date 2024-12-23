@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from .models import Order, OrderItem, Payment, Promo, PromoUsage, Menu
+from .models import Order, OrderItem, Payment, Promo, PromoUsage, Menu, Restaurant
 from .serializers import OrderSerializer, PaymentSerializer
 from django.db import transaction
 from rest_framework.views import APIView

@@ -64,7 +64,10 @@
         </div> -->
       </CardContent>
       <CardFooter>
-        <Button class="w-full" @click="handleRegister" :disabled="!canSubmit">Create Account</Button>
+        <Button :disabled="isLoading || !canSubmit" class="w-full flex items-center justify-center" @click="handleRegister">
+          <LucideSpinner v-if="isLoading" class="mr-2 h-4 w-4 animate-spin" />
+          Create Account
+        </Button>
       </CardFooter>
     </Card>
   </div>
@@ -81,6 +84,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/components/ui/toast'
+import { LoaderCircle as LucideSpinner } from 'lucide-vue-next'
+
 
 // Form fields
 const firstName = ref('')
@@ -94,7 +99,8 @@ const errorMessage = ref('')
 const passwordStrength = ref(0)
 const feedback = ref('')
 const errors = ref({})
-const isTesting = ref(false) // Testing mode toggle
+const isTesting = ref(false)
+const isLoading = ref(false)
 
 // Password rules
 const hasMinLength = computed(() => password.value.length >= 8)
@@ -167,29 +173,45 @@ if (isAuthenticated()) {
 
 const handleRegister = async () => {
   try {
+    isLoading.value = true
     errorMessage.value = ''
     errors.value = {}
 
-    await register(email.value, phone.value, username.value, password.value, firstName.value, lastName.value, 'restaurant_owner')
+    // Call the register API
+    await register(
+      email.value,
+      phone.value,
+      username.value,
+      password.value,
+      firstName.value,
+      lastName.value,
+      'restaurant_owner'
+    )
+
+    localStorage.setItem('registeredEmail', email.value)
 
     toast({
       title: 'Registration Successful!',
-      description: 'Your account has been created. You will now be redirected.',
+      description: 'Your account has been created. A verification code has been sent to your email.',
     })
 
-    window.location.href = '/login'
+    // Redirect to the email verification page
+    window.location.href = '/verify-email'
   } catch (error) {
-      console.error("Unexpected error during registration:", error)
-      const responseErrors = error.data || {}
+    console.error('Unexpected error during registration:', error)
+    
+    // Extract specific field errors from the response
+    const responseErrors = error.response?.data || {}
 
-      // Capture specific field errors if they exist
-      errors.value.email = responseErrors.email?.[0] || ''
-      errors.value.phone = responseErrors.phone?.[0] || ''
-      errors.value.username = responseErrors.username?.[0] || ''
-      errors.value.password = responseErrors.password?.[0] || ''
-      
-      // Fallback error message
-      errorMessage.value = 'Registration failed. Please check the errors above.'
+    errors.value.email = responseErrors.email?.[0] || ''
+    errors.value.phone = responseErrors.phone?.[0] || ''
+    errors.value.username = responseErrors.username?.[0] || ''
+    errors.value.password = responseErrors.password?.[0] || ''
+
+    // Fallback error message
+    errorMessage.value = 'Registration failed. Please check the errors above or try again.'
+  } finally {
+    isLoading.value = false
   }
 }
 </script>

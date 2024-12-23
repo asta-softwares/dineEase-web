@@ -27,19 +27,22 @@ export function useOrderApiEndpoints() {
       return data.value
     }
 
-    const createPaymentIntent = async (amount) => {
+    const createPaymentIntent = async (amount, restaurantStripeAccountId) => {
       try {
         const { data, error } = await useFetch(`${baseUrl}payments/create-payment-intent/`, {
           method: 'POST',
           headers,
-          body: { amount },  // Send the amount in the request body
+          body: {
+            amount: amount,
+            restaurant_stripe_account_id: restaurantStripeAccountId,
+          },
         })
     
         if (error.value) {
-          throw error.value
+          throw new Error(error.value.message || 'Failed to create payment intent');
         }
     
-        return data.value  // This should contain the clientSecret
+        return data.value
       } catch (err) {
         console.error('Error creating payment intent:', err)
         throw err

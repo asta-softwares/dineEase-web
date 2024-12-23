@@ -45,6 +45,24 @@ export function useApiEndpoints() {
     return data.value
   }
 
+  const createStripeOnboardingLink = async (restaurantId) => {
+    try {
+      const { data, error } = await useFetch(`${baseUrl}create-onboarding-link/${restaurantId}/`, {
+        method: 'GET',
+      });
+  
+      if (error.value) {
+        console.error('Error creating Stripe onboarding link:', error.value);
+        return { success: false, error: error.value };
+      }
+  
+      return { success: true, onboardingUrl: data.value.onboarding_url };
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
   const deleteRestaurant = async (id) => {
     const { data, error } = await useFetch(`${baseUrl}restaurants/${id}/`, {
       method: 'DELETE',
@@ -183,5 +201,6 @@ export function useApiEndpoints() {
     deleteMenu,
     fetchRestaurantsMini,
     fetchPromosByRestaurant,
+    createStripeOnboardingLink,
   }
 }
