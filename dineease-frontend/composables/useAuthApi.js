@@ -37,20 +37,25 @@ export function useAuthApi() {
   }
   
   const fetchUser = async () => {
-    try {
-      const response = await fetch(baseUrl + 'me/', {
-        headers: {
-          Authorization: `Bearer ${authToken.value}`,
-        },
-      });
-      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-      const data = await response.json();
-      console.log('User Data:', data);
-      return data;
-    } catch (err) {
-      console.error('Fetch error:', err);
-      throw err;
+    console.log("ENTER")
+    const { data, error } = await useFetch(baseUrl + 'me/', {
+      headers: {
+        Authorization: `Bearer ${authToken.value}`,
+      },
+    });
+  
+    if (error.value) {
+      const success = await refreshAccessToken();
+      if (success) {
+        return await fetchUser();
+      }
+  
+      // If refresh fails, throw the original error
+      throw error.value;
     }
+    
+    console.log("USER", data.value, error.value)
+    return data.value;
   };
 
   const refreshAccessToken = async () => {

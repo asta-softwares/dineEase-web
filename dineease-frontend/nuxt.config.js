@@ -6,7 +6,7 @@ export default defineNuxtConfig({
       MAPBOX_API_KEY: 'pk.eyJ1IjoiY291bnRhYmxlLXdlYiIsImEiOiJjamQyaTV0dXYxdjJuMnFtd3phMzJjZXBxIn0.DHpU55XJjLMUBHrl7d1bbQ'
     },
   },
-
+  ssr: false,
   app: {
     head: {
       title: 'DineEase.ca',
