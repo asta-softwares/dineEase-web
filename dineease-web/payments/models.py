@@ -80,7 +80,7 @@ class Payment(models.Model):
         ('refunded', 'Refunded')
     ])
     transaction_id = models.CharField(max_length=255, unique=True)
-    amount_paid = models.DecimalField(max_digits=10, decimal_places=2)  # Store in dollars
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2)
     refund_status = models.CharField(max_length=50, choices=[
         ('not_requested', 'Not Requested'),
         ('requested', 'Requested'),
@@ -99,3 +99,17 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"Payment for Order {self.order.id} - {self.payment_method}"
+
+class Refund(models.Model):
+    payment = models.ForeignKey(Payment, on_delete=models.CASCADE, related_name='refunds')
+    refund_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    refund_date = models.DateTimeField(auto_now_add=True)
+    refund_reason = models.TextField(null=True, blank=True)
+    refund_status = models.CharField(max_length=50, choices=[
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed')
+    ])
+
+    def __str__(self):
+        return f"Refund {self.id} - {self.refund_amount}"

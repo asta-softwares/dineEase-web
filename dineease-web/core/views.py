@@ -68,18 +68,25 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         categories_query = self.request.query_params.get('categories')
         service_type_query = self.request.query_params.get('service_type')
 
+        # Filter by name
         if name_query:
             queryset = queryset.filter(name__icontains=name_query)
 
+        # Filter by categories
         if categories_query:
             try:
                 category_ids = [int(cat_id) for cat_id in categories_query.split(',')]
                 queryset = queryset.filter(categories__id__in=category_ids).distinct()
             except ValueError:
-                pass  # Ignore invalid category IDs
+                pass
 
         if service_type_query:
-            queryset = queryset.filter(service_type=service_type_query)
+            if service_type_query == 'dine-in':
+                queryset = queryset.filter(service_type__in=['dine-in', 'both'])
+            elif service_type_query == 'takeout':
+                queryset = queryset.filter(service_type__in=['takeout', 'both'])
+            else:
+                queryset = queryset.filter(service_type=service_type_query)
 
         return queryset
 

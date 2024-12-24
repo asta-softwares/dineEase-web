@@ -1,14 +1,15 @@
 <template>
-  <div class="relative h-screen w-screen overflow-x-hidden">
-    <div class="absolute inset-0 bg-short-bg bg-no-repeat bg-center opacity-20 -z-10"></div>
-    <Toaster />
-    <NuxtLoadingIndicator />
-
-    <MainNavigation v-if="user" />
-
+  <div 
+    :class="computedGridClass"
+    class="min-h-screen w-full"
+  >
+    <Sidebar v-if="user"/>
     <!-- Main Content Wrapper -->
-    <div class="relative z-10 max-w-screen-xl w-full mx-auto p-4 min-h-full h-auto">
-      
+    <div class="relative z-10 flex flex-1 flex-col">
+      <div class="absolute inset-0 bg-short-bg bg-no-repeat bg-center opacity-20 -z-10"></div>
+      <Toaster />
+      <NuxtLoadingIndicator />
+  
       <!-- Loading Skeleton -->
       <div v-if="loading" class="splash-screen">
         <div class="flex flex-col items-center justify-center gap-y-4">
@@ -23,13 +24,13 @@
       </div>
 
       <!-- Main Content -->
-      <div v-else class="py-2">
+      <div v-else class="flex min-h-screen w-full flex-col gap-y-4 bg-muted/40 p-4  px-4 sm:px-8">
+        <Header v-if="user" :breadcrumbs="breadcrumbs"/>
         <NuxtPage />
       </div>
-    </div>
 
-    <!-- Footer -->
-    <Footer />
+      <Footer />
+    </div>
   </div>
 </template>
 
@@ -41,6 +42,9 @@ import Footer from '@/components/Footer.vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Toaster from '@/components/ui/toast/Toaster.vue'
+import Sidebar from '@/components/Sidebar.vue'
+import Header from '~/components/Header.vue'
+import { useBreadcrumb } from '@/composables/useBreadcrumb';
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -49,6 +53,7 @@ const loading = ref(true)
 const error = ref(null)
 
 const user = computed(() => userStore.user)
+const { breadcrumbs } = useBreadcrumb();
 
 // Load User Data
 const { data, pending, error: fetchError } = await useAsyncData('user-data', async () => {
@@ -66,6 +71,12 @@ watchEffect(() => {
   }
   error.value = fetchError.value
 })
+
+const computedGridClass = computed(() => {
+  return user.value
+    ? 'grid md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]'
+    : 'grid-cols-1';
+});
 </script>
 
 <style scoped>

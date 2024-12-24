@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from rest_framework.pagination import PageNumberPagination
 
 stripe_status_mapping = {
     'requires_payment_method': 'pending',
@@ -20,6 +21,11 @@ stripe_status_mapping = {
     'refunded': 'refunded',
 }
 
+class OrderPagination(PageNumberPagination):
+    page_size = 30
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 class OrderViewSet(viewsets.ModelViewSet):
     """
     A ViewSet for viewing and editing order instances.
@@ -27,6 +33,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     queryset = Order.objects.all()
     permission_classes = [IsAuthenticated]
+    pagination_class = OrderPagination
 
     def get_queryset(self):
         """

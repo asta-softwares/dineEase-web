@@ -1,6 +1,6 @@
 <template>
   <div class="flex-col md:flex">
-    <div class="flex-1 space-y-4 p-8 pt-2 max-w-screen-xl w-full mx-auto">
+    <div class="flex-1 space-y-4 pt-2 max-w-screen-xl w-full">
       <div class="flex items-center justify-between space-y-2">
         <h2 class="text-3xl font-bold tracking-tight">Order List</h2>
       </div>
@@ -66,6 +66,13 @@
           There are currently no orders to display. Once customers place orders, they'll appear here.
         </span>
       </div>
+
+      <!-- Pagination Controls -->
+      <div v-if="totalPages > 1" class="flex justify-center mt-4">
+        <Button @click="changePage(currentPage - 1)" :disabled="currentPage === 1">Previous</Button>
+        <span class="mx-2">Page {{ currentPage }} of {{ totalPages }}</span>
+        <Button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages">Next</Button>
+      </div>
     </div>
   </div>
 </template>
@@ -77,6 +84,11 @@ import { Button } from '@/components/ui/button';
 import SkeletonLoader from '@/components/Skeleton/SkeletonLoading.vue';
 import { useWebSocket } from '@/lib/websocket';
 import { useUserStore } from '@/stores/user'
+import { useBreadcrumb } from '@/composables/useBreadcrumb';
+const { setBreadcrumbs } = useBreadcrumb();
+const currentPage = ref(1);
+const totalPages = ref(1);
+const pageSize = 30;
 
 const orders = ref([]);
 const isLoading = ref(true);
@@ -89,6 +101,10 @@ const { connectWebSocket, closeWebSocket } = useWebSocket(`restaurant/${userId.v
 onMounted(async () => {
   await loadOrders();
   connectWebSocket();
+  setBreadcrumbs([
+    { label: 'Dashboard' },
+    { label: 'Incoming Orders', path: '/', isCurrent: true },
+  ]);
 });
 
 onUnmounted(() => {
@@ -97,13 +113,22 @@ onUnmounted(() => {
 
 async function loadOrders() {
   try {
-    const fetchedOrders = await fetchOrders();
-    appendNewOrders(fetchedOrders);
+    isLoading.value = true;
+    const { results, count } = await fetchOrders({ page: currentPage.value, page_size: pageSize });
+    console.log("ERSULT", results)
+    orders.value = results;
+    totalPages.value = Math.ceil(count / pageSize);
   } catch (error) {
-    console.error('Error fetching data:', error);
+    console.error('Error fetching orders:', error);
   } finally {
     isLoading.value = false;
   }
+}
+
+function changePage(page) {
+  if (page < 1 || page > totalPages.value) return;
+  currentPage.value = page;
+  loadOrders();
 }
 
 // Append new orders to the list and sort by recency
