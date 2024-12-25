@@ -19,7 +19,7 @@
               v-for="(item, index) in navigationItems.filter(item => !item.isBottom)"
               :key="index"
               :to="item.path"
-              class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              class="flex items-center gap-3 rounded-lg px-3 py-4 text-muted-foreground transition-all hover:text-primary"
               :class="{ 'bg-muted text-primary': isActive(item.path) }"
               :disabled="item.disabled" 
             >
@@ -70,7 +70,7 @@
   // Navigation configuration
   const navigationItems = [
     { label: 'Dashboard', path: '/', icon: Home },
-    { label: 'Orders', path: '/order', icon: ShoppingCart, badge: 6 },
+    // { label: 'Orders', path: '/order', icon: ShoppingCart, badge: 6 },
     { label: 'Restaurant', path: '/restaurants', icon: UtensilsCrossed },
     { label: 'Menus', path: '/menus', icon: SquareMenu },
     { label: 'Promos', path: '/promos', icon: Package },

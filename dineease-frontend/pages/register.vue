@@ -63,11 +63,19 @@
           <Label for="isTesting" class="ml-2">Enable Autofill (Testing Mode)</Label>
         </div> -->
       </CardContent>
-      <CardFooter>
+      <CardFooter class="flex flex-col gap-y-4">
         <Button :disabled="isLoading || !canSubmit" class="w-full flex items-center justify-center" @click="handleRegister">
           <LucideSpinner v-if="isLoading" class="mr-2 h-4 w-4 animate-spin" />
           Create Account
         </Button>
+        <Button id="googleSignInButton" variant="outline" class="w-full flex items-center justify-center gap-2" @click="handleGoogleRegister">
+          <img class="w-[20px]" src="/images/google-icon.svg" alt="Google Logo" />
+          Sign up with Google
+        </Button>
+        <div class="text-sm text-center">
+          Already have an account?
+          <span class="text-blue-500 cursor-pointer" @click="goToLogin">Sign In</span>
+        </div>
       </CardFooter>
     </Card>
   </div>
@@ -162,7 +170,7 @@ const strengthColorClass = computed(() => {
 const passwordMismatch = computed(() => confirmPassword.value && password.value !== confirmPassword.value)
 const canSubmit = computed(() => firstName.value && lastName.value && email.value && phone.value && password.value && !passwordMismatch.value && passwordStrength.value >= 2)
 
-const { register } = useAuthApi()
+const { register, googleAuth } = useAuthApi()
 const { isAuthenticated } = useAuth()
 const router = useRouter()
 
@@ -214,6 +222,50 @@ const handleRegister = async () => {
     isLoading.value = false
   }
 }
+
+const goToLogin = () => {
+  router.push('/login')
+}
+
+const handleGoogleRegister = async () => {
+  try {
+    isLoading.value = true;
+
+    // Initialize Google Identity Services
+    window.google.accounts.id.initialize({
+      client_id: '481133992953-7d6dmauctabfht3j3q9s2onpd1thfs17.apps.googleusercontent.com',
+      callback: async (response) => {
+        if (response.error) {
+          throw new Error(response.error);
+        }
+
+        const idToken = response.credential; // This is the ID Token (JWT)
+
+        // Use googleAuth to handle backend communication
+        await googleAuth(idToken);
+
+        toast({
+          title: 'Login Successful!',
+          description: 'You are now logged in with Google.',
+        });
+
+        router.push('/'); // Redirect to dashboard
+      },
+    });
+
+    // Show the Google Sign-In button or prompt the user
+    window.google.accounts.id.prompt(); // Prompts the user to log in
+  } catch (error) {
+    console.error('Google Login Error:', error);
+    toast({
+      title: 'Login Failed',
+      description: 'Unable to log in with Google.',
+      variant: 'destructive',
+    });
+  } finally {
+    isLoading.value = false;
+  }
+};
 </script>
 
 <style scoped>

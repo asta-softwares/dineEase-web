@@ -32,6 +32,11 @@ class PromoSerializer(serializers.ModelSerializer):
             'end_date', 'minimum_order', 'code', 'usage_limit', 'target_audience', 'promo_type',
         ]
 
+class PromoMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Promo
+        fields = ['id', 'name', 'discount', 'discount_type']
+
 class AddonOptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AddonOption
@@ -188,10 +193,11 @@ class RegisterSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(required=True)
     last_name = serializers.CharField(required=True)
     type_of_user = serializers.CharField(required=True, write_only=True)
+    google_token = serializers.CharField(required=False, write_only=True)
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'phone', 'password', 'first_name', 'last_name', 'type_of_user')
+        fields = ('username', 'email', 'phone', 'password', 'first_name', 'last_name', 'type_of_user', 'google_token')
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate_email(self, value):

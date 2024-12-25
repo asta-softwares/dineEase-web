@@ -7,6 +7,7 @@ export function useAuthApi() {
   const baseUrl = config.public.apiBaseUrl
   const authToken = useCookie('authToken')
   const refreshToken = useCookie('refreshToken')
+  const activeRestaurantIdCookie = useCookie('restaurant_id');
   const userStore = useUserStore()
 
   const register = async (email, phone, username, password, firstName, lastName, typeOfUser) => {
@@ -18,6 +19,23 @@ export function useAuthApi() {
   
     authToken.value = data.value.access
     refreshToken.value = data.value.refresh
+    return data.value
+  }
+
+  const googleAuth = async (idToken) => {
+    const { data, error } = await useFetch(`${baseUrl}auth/google/`, {
+      method: 'POST',
+      body: { google_token: idToken, type_of_user: 'restaurant_owner' },
+    })
+  
+    if (error.value) throw error.value
+  
+    // Store tokens and load user if needed
+    authToken.value = data.value.access
+    refreshToken.value = data.value.refresh
+    
+    await userStore.loadUser()
+  
     return data.value
   }
 
@@ -37,7 +55,6 @@ export function useAuthApi() {
   }
   
   const fetchUser = async () => {
-    console.log("ENTER")
     const { data, error } = await useFetch(baseUrl + 'me/', {
       headers: {
         Authorization: `Bearer ${authToken.value}`,
@@ -53,8 +70,14 @@ export function useAuthApi() {
       // If refresh fails, throw the original error
       throw error.value;
     }
-    
-    console.log("USER", data.value, error.value)
+  
+    console.log("USER", data.value, error.value);
+  
+    // Set active_restaurant_id to a cookie
+    if (data.value?.active_restaurant?.id) {
+      activeRestaurantIdCookie.value = data.value.active_restaurant.id;
+    }
+  
     return data.value;
   };
 
@@ -94,10 +117,10 @@ export function useAuthApi() {
     console.log("GO HERE")
     authToken.value = null;
     refreshToken.value = null;
-  
+    activeRestaurantIdCookie.value = null;
     userStore.clearUser();
   
-    // window.location.href = "/login";
+    window.location.href = "/login";
   };
 
   const logout = async () => {
@@ -116,7 +139,6 @@ export function useAuthApi() {
     } catch (error) {
       console.error("Error logging out on server:", error)
     } finally {
-      
       redirectToLogin()
     }
   }
@@ -137,5 +159,5 @@ export function useAuthApi() {
     return data.value
   }
 
-  return { register, login, logout, fetchUser, updateUser }
+  return { register, login, logout, fetchUser, updateUser, googleAuth }
 }

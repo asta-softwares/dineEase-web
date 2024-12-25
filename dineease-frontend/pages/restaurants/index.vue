@@ -4,7 +4,7 @@
       <h2 class="text-3xl font-bold tracking-tight">
         Restaurant List
       </h2>
-      <div class="ml-auto">
+      <div v-if="restaurants.length < 1" class="ml-auto">
         <Button @click="handleAddRestaurant">
           <CirclePlus class="mr-2 h-4 w-4" />
           Add Restaurant
@@ -39,6 +39,8 @@ import { useApiEndpoints } from '@/composables/useApiRestaurants.js'
 import { CirclePlus } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import SkeletonLoader from '@/components/Skeleton/SkeletonLoading.vue'
+import { useBreadcrumb } from '@/composables/useBreadcrumb';
+const { setBreadcrumbs } = useBreadcrumb();
 
 const restaurants = ref([])
 const isLoading = ref(true)
@@ -47,6 +49,10 @@ const { fetchRestaurants } = useApiEndpoints()
 onMounted(async () => {
   try {
     restaurants.value = await fetchRestaurants()
+    setBreadcrumbs([
+      { label: 'Dashboard', path: '/' },
+      { label: 'Restaurants', path: '/restaurants', isCurrent: true },
+    ]);
     console.log("rest", restaurants.value)
   } catch (error) {
     console.error("Error fetching data:", error)

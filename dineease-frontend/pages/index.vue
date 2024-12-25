@@ -115,8 +115,8 @@ async function loadOrders() {
   try {
     isLoading.value = true;
     const { results, count } = await fetchOrders({ page: currentPage.value, page_size: pageSize });
-    console.log("ERSULT", results)
-    orders.value = results;
+    appendNewOrders(results);
+    console.log(results)
     totalPages.value = Math.ceil(count / pageSize);
   } catch (error) {
     console.error('Error fetching orders:', error);
@@ -154,8 +154,8 @@ function appendNewOrders(fetchedOrders) {
 
 // Handle incoming WebSocket messages
 function handleWebSocketMessage(data) {
-  console.log("DATA", data)
   if (data.status === 'pending') {
+    console.log()
     loadOrders(); // Fetch new orders when notified
   }
 }
@@ -203,21 +203,3 @@ async function rejectOrder(orderId) {
   }
 }
 </script>
-
-<style scoped>
-/* Fade-in animation */
-.fade-in {
-  animation: fadeIn 0.5s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-</style>

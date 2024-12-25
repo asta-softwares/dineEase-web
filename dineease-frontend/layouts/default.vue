@@ -45,8 +45,10 @@ import Toaster from '@/components/ui/toast/Toaster.vue'
 import Sidebar from '@/components/Sidebar.vue'
 import Header from '~/components/Header.vue'
 import { useBreadcrumb } from '@/composables/useBreadcrumb';
+import { useAuth } from '@/composables/useAuth'
 
 const userStore = useUserStore()
+const { isAuthenticated } = useAuth()
 const router = useRouter()
 const route = useRoute()
 const loading = ref(true)
@@ -57,11 +59,14 @@ const { breadcrumbs } = useBreadcrumb();
 
 // Load User Data
 const { data, pending, error: fetchError } = await useAsyncData('user-data', async () => {
-  if (!userStore.user) {
-    await userStore.loadUser()
+  if (isAuthenticated()) {
+    if (!userStore.user) {
+      await userStore.loadUser();
+    }
+    return userStore.user;
   }
-  return userStore.user
-})
+  return null;
+});
 
 watchEffect(() => {
   if (!pending.value) {

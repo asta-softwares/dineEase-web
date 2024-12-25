@@ -1,5 +1,5 @@
 <template>
-  <form @submit.prevent="handlePayment" class="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
+  <form @submit.prevent="handlePayment" class="max-w-md w-[500px] placeholder:mx-auto p-6 bg-white rounded-lg shadow-md">
     <div>
       <h2>Order Notifications</h2>
       <p v-for="(msg, index) in notificationMessages" :key="index">{{ msg }}</p>
@@ -57,18 +57,14 @@ onUnmounted(() => {
 
 // Fixed order data (replace with dynamic data as needed)
 const orderData = {
-  amount: 5000, // $50.00 in cents
+  amount: 104.93, // $50.00 in cents
   restaurant_id: 1,
   owner_id: 1,
-  order_total: 50.0,
-  is_delivery: true,
-  order_type: 'delivery',
-  delivery_address: '123 Main Street',
-  tax: 5.0,
-  tip: 3.0,
+  promo_ids: [3, 6],
+  order_total: 104.93,
   menu_items: [
     { menu_item_id: 1, quantity: 2, special_instructions: 'Extra cheese' },
-    { menu_item_id: 2, quantity: 1 },
+    { menu_item_id: 2, quantity: 5 },
   ],
 };
 

@@ -21,3 +21,5 @@ urllib3==2.2.3
 channels==4.2.0
 channels_redis
 daphne
+social-auth-app-django
+google-auth

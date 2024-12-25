@@ -1,13 +1,14 @@
 from rest_framework import viewsets, status
 from .models import Order, OrderItem, Payment, Promo, PromoUsage, Menu, Restaurant
-from .serializers import OrderSerializer, PaymentSerializer
+from .serializers import OrderSerializer, PaymentSerializer, OrderPreviewSerializer
 from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from rest_framework.pagination import PageNumberPagination
+from decimal import Decimal
 
 stripe_status_mapping = {
     'requires_payment_method': 'pending',
@@ -48,6 +49,16 @@ class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all().select_related('order')
     serializer_class = PaymentSerializer
 
+class OrderPreviewAPI(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        serializer = OrderPreviewSerializer(data=request.data)
+        if serializer.is_valid():
+            totals = serializer.calculate_totals()
+            return Response(totals, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
 class CreateOrderView(APIView):
     @transaction.atomic
     def post(self, request):
@@ -57,51 +68,67 @@ class CreateOrderView(APIView):
         try:
             data = request.data
             customer = request.user
-            promo_id = data.get('promo_id')
+            promo_ids = data.get('promo_ids', [])
             owner_id = data['owner_id']
 
-            # Validate Promo
-            promo = None
-            if promo_id:
-                promo = Promo.objects.get(id=promo_id)
+            # Validate Promos
+            promos = Promo.objects.filter(id__in=promo_ids, status='active')
+            if len(promo_ids) != promos.count():
+                return Response({"error": "One or more promos are invalid or inactive."}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Check if the promo is still valid
-                if not promo.can_be_used():
-                    return Response({"error": "Promo cannot be used"}, status=status.HTTP_400_BAD_REQUEST)
+            # Check Promo Usage
+            invalid_promos = PromoUsage.objects.filter(
+                promo__in=promos, customer=customer, status='approved'
+            )
+            if invalid_promos.exists():
+                return Response({"error": "Some promos have already been used."}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Check if the customer has already used this promo
-                existing_usage = PromoUsage.objects.filter(promo=promo, customer=customer).first()
-                if existing_usage and existing_usage.status == 'approved':
-                    return Response({"error": "Promo has already been used and approved"}, status=status.HTTP_400_BAD_REQUEST)
+            # Calculate Order Total from Menu Items
+            order_total = 0
+            for item in data['menu_items']:
+                try:
+                    menu_item = Menu.objects.get(id=item['menu_item_id'])
+                    order_total += menu_item.cost * item['quantity']
+                except Menu.DoesNotExist:
+                    return Response({"error": f"Menu item {item['menu_item_id']} does not exist."}, status=status.HTTP_400_BAD_REQUEST)
 
             # Create the Order
             order = Order.objects.create(
                 customer=customer,
                 restaurant_id=data['restaurant_id'],
-                promo=promo,
-                order_total=data['order_total'],
+                order_total=order_total,  # Base order total before discounts
                 status='pending',  # Always pending until payment is approved
-                is_delivery=data['is_delivery'],
-                order_type=data['order_type'],
+                is_delivery=data.get('is_delivery', False),
+                order_type=data.get('order_type', 'dine_in'),
                 delivery_address=data.get('delivery_address', ''),
-                tax=data['tax'],
-                tip=data['tip']
+                tip=data.get('tip', 0.0)
             )
+
+            # Attach Promos to Order
+            order.promos.set(promos)
 
             # Add Order Items
             for item in data['menu_items']:
-                menu_item = Menu.objects.get(id=item['menu_item_id'])
                 OrderItem.objects.create(
                     order=order,
-                    menu_item=menu_item,
+                    menu_item=Menu.objects.get(id=item['menu_item_id']),
                     quantity=item['quantity'],
                     price=menu_item.cost,
                     special_instructions=item.get('special_instructions', '')
                 )
 
             # Record Promo Usage
-            if promo:
-                PromoUsage.objects.create(promo=promo, customer=customer, status='pending')
+            PromoUsage.objects.bulk_create([
+                PromoUsage(promo=promo, customer=customer, status='pending') for promo in promos
+            ])
+
+            # Final Save to Calculate Totals
+            order.save()
+
+            print(f"Amount PaidSs: {data['payment']['amount_paid']}, Order Total: {order.total} {order_total}")
+
+            if Decimal(data['payment']['amount_paid']) < order.total:
+                return Response({"error": "Amount paid is less than the total order amount."}, status=status.HTTP_400_BAD_REQUEST)
 
             # Create Payment
             stripe_status = data['payment']['payment_status']
@@ -126,7 +153,7 @@ class CreateOrderView(APIView):
                     'status': order.status,
                     'order_details': {
                         'customer': customer.username,
-                        'total': order.order_total,
+                        'total': float(order.total),
                         'order_time': order.created_at.isoformat(),
                     }
                 }
@@ -138,8 +165,10 @@ class CreateOrderView(APIView):
                 "message": "Order created successfully. Awaiting payment approval."
             }, status=status.HTTP_201_CREATED)
 
+        except Restaurant.DoesNotExist:
+            return Response({"error": "Invalid restaurant ID."}, status=status.HTTP_400_BAD_REQUEST)
         except Promo.DoesNotExist:
-            return Response({"error": "Invalid promo"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Invalid promo ID."}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 class UpdatePaymentStatusView(APIView):
@@ -248,11 +277,18 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 @api_view(['POST'])
 def create_payment_intent(request):
     try:
-        amount = int(request.data.get('amount'))  # Amount in cents
-        currency = 'usd'  # Change the currency as needed
+        # Get the amount in dollars from the request
+        amount_dollars = float(request.data.get('amount'))
 
+        # Convert the amount to cents (CAD currency)
+        amount_cents = int(amount_dollars * 100)
+
+        # Set the currency to CAD
+        currency = 'cad'
+
+        # Create a PaymentIntent in Stripe
         payment_intent = stripe.PaymentIntent.create(
-            amount=amount,
+            amount=amount_cents,
             currency=currency,
             metadata={'integration_check': 'accept_a_payment'}
         )
@@ -260,6 +296,8 @@ def create_payment_intent(request):
         return Response({'clientSecret': payment_intent.client_secret}, status=status.HTTP_200_OK)
     except stripe.error.StripeError as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except (ValueError, TypeError) as e:
+        return Response({'error': 'Invalid amount provided.'}, status=status.HTTP_400_BAD_REQUEST)
     
 @api_view(['POST'])
 def refund_payment(request):
