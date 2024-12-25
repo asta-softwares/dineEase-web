@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Order, OrderItem, Payment
+from .models import Order, OrderItem, Payment, Tax, PromoUsage
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
@@ -13,3 +13,11 @@ class OrderAdmin(admin.ModelAdmin):
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
     list_display = ('order', 'payment_method', 'payment_status', 'amount_paid', 'payment_date')
+
+@admin.register(Tax)
+class TaxAdmin(admin.ModelAdmin):
+    list_display = ('province', 'rate', 'service_fee_thresholds')
+
+@admin.register(PromoUsage)
+class PromoUsageAdmin(admin.ModelAdmin):
+    list_display = ('promo', 'customer', 'status')

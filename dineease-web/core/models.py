@@ -64,7 +64,13 @@ class Restaurant(models.Model):
     location = models.CharField(max_length=255)
     coordinates = gis_models.PointField(null=True, blank=True)
     city = models.CharField(max_length=100, null=True, blank=True)
-    province = models.CharField(max_length=2, choices=CANADA_PROVINCE_CHOICES, null=True, blank=True)
+    province = models.CharField(
+        max_length=2,
+        choices=CANADA_PROVINCE_CHOICES,
+        default="ON",
+        null=True,
+        blank=True,
+    )
     email = models.EmailField(null=True, blank=True)
     telephone = models.CharField(max_length=15)
     stripe_account_id = models.CharField(max_length=255, blank=True, null=True)
@@ -222,7 +228,13 @@ class UserProfile(models.Model):
     coordinates = gis_models.PointField(null=True, blank=True)
     address = models.CharField(max_length=255)
     city = models.CharField(max_length=100)
-    province = models.CharField(max_length=2, choices=CANADA_PROVINCE_CHOICES, null=True, blank=True)
+    province = models.CharField(
+        max_length=2,
+        choices=CANADA_PROVINCE_CHOICES,
+        default="ON",
+        null=True,
+        blank=True,
+    )
     image = models.ImageField(upload_to='user_pictures/', blank=True)
     
     def __str__(self):

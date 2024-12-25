@@ -17,7 +17,7 @@ def send_confirmation_email(user, code):
     If you did not register, please ignore this email.
     """
     from_email = settings.DEFAULT_FROM_EMAIL
-    recipient_list = ['mico.dahang@gmail.com'] # NOTE: [user.email]
+    recipient_list = [user.email] # NOTE: [user.email]
 
     try:
         send_mail(subject, message, from_email, recipient_list)

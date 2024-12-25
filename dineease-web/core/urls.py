@@ -16,7 +16,8 @@ from .views import (
     RestaurantMiniListView,
     UserUpdateView,
     VerifyCodeView,
-    ResendEmailView
+    ResendEmailView,
+    GoogleAuthView,
 )
 from rest_framework_simplejwt.views import (
     TokenRefreshView,
@@ -47,4 +48,5 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('token/verify/', TokenVerifyView.as_view(), name='token_verify'),
     path('create-onboarding-link/<int:restaurant_id>/', create_onboarding_link, name='create-onboarding-link'),
+    path('auth/google/', GoogleAuthView.as_view(), name='google-auth'),
 ]

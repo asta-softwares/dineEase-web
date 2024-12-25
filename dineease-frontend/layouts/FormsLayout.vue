@@ -4,7 +4,7 @@ import SidebarNav from '@/components/SidebarNav.vue'
 </script>
 
 <template>
-  <div class="space-y-6 p-10 pb-16 md:block mx-auto max-w-screen-xl">
+  <div class="space-y-6 pb-16 md:block">
     <div class="space-y-0.5">
       <h2 class="text-2xl font-bold tracking-tight">
         Settings

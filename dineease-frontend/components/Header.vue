@@ -85,7 +85,7 @@
   
   const navigationItems = [
     { label: 'Dashboard', path: '/', icon: Home },
-    { label: 'Orders', path: '/order', icon: ShoppingCart, badge: 6 },
+    // { label: 'Orders', path: '/order', icon: ShoppingCart, badge: 6 },
     { label: 'Restaurant', path: '/restaurants', icon: UtensilsCrossed },
     { label: 'Menus', path: '/menus', icon: SquareMenu },
     { label: 'Promos', path: '/promos', icon: Package },

@@ -7,8 +7,6 @@
         <p>Error loading restaurant data: {{ error }}</p>
       </div>
       <div v-else class="flex flex-col gap-4 p-4 pt-0">
-        <!-- Restaurant Overview -->
-        <BreadcrumbNav :items="breadcrumbItems" />
         <div class="border p-4 rounded-lg flex flex-col gap-4">
           <div class="flex items-start gap-4">
             <img
@@ -178,6 +176,8 @@ import { Dot, MapPin, Utensils, Phone, Mail, Star } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { sortedOperatingHours } from '~/lib/timeUtils';
+import { useBreadcrumb } from '@/composables/useBreadcrumb';
+const { setBreadcrumbs } = useBreadcrumb();
   
   const { fetchRestaurantById } = useApiEndpoints()
   const route = useRoute()
@@ -200,11 +200,11 @@ const breadcrumbItems = ref([
 // Update breadcrumbItems when restaurant data is available
 watchEffect(() => {
   if (restaurant.value) {
-    breadcrumbItems.value = [
+    setBreadcrumbs([
       { label: 'Home', href: '/' },
       { label: 'Restaurant List', href: `/restaurants/` },
       { label: restaurant.value.name || 'Name' },
-    ]
+    ]);
   }
 })
 

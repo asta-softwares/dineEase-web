@@ -5,19 +5,20 @@ from .serializers import RestaurantMiniSerializer, RestaurantSerializer, PromoSe
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q, Prefetch
 from rest_framework.decorators import action
 from rest_framework import permissions
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth.models import User
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
 from django.contrib.auth import update_session_auth_hash
 from django.db import IntegrityError
 from .utils import send_confirmation_email
+from google.oauth2.id_token import verify_oauth2_token
+from google.auth.transport.requests import Request
 
 class RestaurantViewSet(viewsets.ModelViewSet):
     serializer_class = RestaurantSerializer
@@ -347,7 +348,7 @@ class UserDetailView(APIView):
         return Response({"message": "User not authenticated"}, status=401)
 
 class UserUpdateView(generics.UpdateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get_object(self):
         return self.request.user
@@ -390,3 +391,64 @@ class UserUpdateView(generics.UpdateAPIView):
             'user': user_serializer.data,
             'profile': profile_serializer.data
         }, status=status.HTTP_200_OK)
+    
+
+from core.models import UserProfile
+    
+class GoogleAuthView(APIView):
+    permission_classes = [AllowAny]
+    """
+    Handle Google OAuth login and registration.
+    """
+
+    def post(self, request, *args, **kwargs):
+        google_token = request.data.get("google_token")
+        type_of_user = request.data.get("type_of_user")
+
+        if not google_token:
+            return Response({"error": "Google token is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Verify the Google ID token
+            idinfo = verify_oauth2_token(google_token, Request())
+
+            if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+                raise ValueError('Invalid issuer.')
+
+            email = idinfo['email']
+            first_name = idinfo.get('given_name', '')
+            last_name = idinfo.get('family_name', '')
+
+            # Check if user exists, otherwise create a new user
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    "username": email,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                }
+            )
+
+            if created:
+                UserProfile.objects.create(user=user, type_of_user=type_of_user)
+
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+
+            return Response({
+                "access": access_token,
+                "refresh": refresh_token,
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                }
+            }, status=status.HTTP_200_OK)
+
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

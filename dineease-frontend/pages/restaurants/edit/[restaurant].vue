@@ -4,7 +4,6 @@
     <div v-else-if="error" class="error-container">Error loading restaurant: {{ error }}</div>
     <div v-else>
       <h2 class="text-2xl font-bold mb-4">Edit Restaurant Details</h2>
-      <BreadcrumbNav :items="breadcrumbItems" />
       <RestaurantForm class="mt-4" :initial-data="restaurant" :is-edit-mode="isEditMode" @submit="updateRestaurant" />
     </div>
   </div>
@@ -15,6 +14,8 @@ import { useApiEndpoints } from '@/composables/useApiRestaurants'
 import RestaurantForm from '@/components/Forms/RestaurantForm'
 import BreadcrumbNav from '@/components/BreadcrumbNav'
 import { toast } from '@/components/ui/toast'
+import { useBreadcrumb } from '@/composables/useBreadcrumb';
+const { setBreadcrumbs } = useBreadcrumb();
 
 // Fetch restaurant data
 const { fetchRestaurantById, editRestaurant } = useApiEndpoints()
@@ -27,22 +28,16 @@ const { data: restaurant, pending, error } = await useAsyncData(
   () => fetchRestaurantById(route.params.restaurant)
 )
 
-// Make breadcrumbItems reactive
-const breadcrumbItems = ref([
-  { label: 'Home', href: '/' },
-  { label: 'Loading...', href: '#' },
-  { label: 'Edit Details' },
-])
 
 // Update breadcrumbItems when restaurant data is available
 watchEffect(() => {
   if (restaurant.value) {
-    breadcrumbItems.value = [
+    setBreadcrumbs([
       { label: 'Dashboard', href: '/' },
       { label: 'Restaurant List', href: '/restaurants' },
       { label: restaurant.value.name || 'Name', href: `/restaurants/${restaurant.value.id}` },
       { label: 'Edit Restaurant Details' },
-    ]
+    ]);
   }
 })
 
