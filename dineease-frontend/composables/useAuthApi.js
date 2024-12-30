@@ -1,4 +1,3 @@
-import { useRuntimeConfig } from '#app'
 import { useUserStore } from '@/stores/user'
 import errorMap from 'zod/locales/en.js'
 

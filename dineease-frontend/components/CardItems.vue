@@ -1,5 +1,5 @@
 <template>
-    <div class="grid grid-cols-2 gap-2 pt-0">
+    <div class="grid grid-cols-1 gap-2 pt-0">
       <TransitionGroup name="list" appear>
         <button
           v-for="item in items"
@@ -13,7 +13,11 @@
           <div class="flex w-full flex-col gap-1">
             <div class="flex items-center">
               <div class="flex items-center gap-2">
-                <img :src="item.image" alt="Restaurant Image" class="w-20 h-20 rounded-md object-cover">
+                <img 
+                  :src="item.image || '/images/logo.svg'" 
+                  alt="Restaurant Image" 
+                  class="w-20 h-20 rounded-md object-cover"
+                />
                 <div class="font-semibold">
                   {{ item.name }}
                 </div>

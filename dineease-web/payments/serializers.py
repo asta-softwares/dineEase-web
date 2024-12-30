@@ -101,9 +101,8 @@ class OrderPreviewSerializer(serializers.Serializer):
         restaurant = self.validated_data['restaurant']
         promos = self.validated_data['promos']
 
-        # Fetch tax rate and service fee thresholds
-        tax = Tax.objects.filter(province=restaurant.province).first()
-        tax_rate = Decimal(tax.rate) if tax else Decimal(0)  # Convert tax_rate to Decimal
+        tax = Tax.objects.filter(province=restaurant.province, is_active=True).first()
+        tax_rate = Decimal(tax.rate) if tax else Decimal(0) 
 
         # Debug: Initial values
         print(f"Initial Order Total: {order_total}")
@@ -132,29 +131,6 @@ class OrderPreviewSerializer(serializers.Serializer):
 
             discount += discount_amount
             print(f"Total Discount So Far: {discount}")
-
-        # Calculate tax and fees
-        tax_amount = discounted_total * (tax_rate / Decimal(100))
-        service_fee = Decimal(tax.get_service_fee(discounted_total)) if tax else Decimal(0)
-        service_fee_tax = service_fee * (tax_rate / Decimal(100))
-        total = discounted_total + tax_amount + service_fee + service_fee_tax
-
-        # Debug: Tax and fee calculations
-        print(f"Discounted Total: {discounted_total}")
-        print(f"Tax Amount: {tax_amount}")
-        print(f"Service Fee: {service_fee}")
-        print(f"Service Fee Tax: {service_fee_tax}")
-        print(f"Final Total: {total}")
-
-        return {
-            "order_total": round(order_total, 2),
-            "discount": round(discount, 2),
-            "tax_rate": round(tax_rate, 2),
-            "tax_amount": round(tax_amount, 2),
-            "service_fee": round(service_fee, 2),
-            "service_fee_tax": round(service_fee_tax, 2),
-            "total": round(total, 2)
-        }
 
         # Calculate tax and fees
         tax_amount = discounted_total * (tax_rate / Decimal(100))

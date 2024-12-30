@@ -1,22 +1,54 @@
-from rest_framework import viewsets, generics, status
+from rest_framework import (
+    viewsets,
+    generics,
+    status,
+    permissions
+)
 from rest_framework.views import APIView
-from .models import Restaurant, Promo, Menu, RestaurantImage, ExpiringToken, VerificationCode
-from .serializers import RestaurantMiniSerializer, RestaurantSerializer, PromoSerializer, MenuSerializer, Category, CategorySerializer, RegisterSerializer, LoginSerializer, UserSerializer, UserUpdateSerializer, UserProfileSerializer, CustomTokenObtainPairSerializer
 from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.db.models import Q, Prefetch
-from rest_framework.decorators import action
-from rest_framework import permissions
-from rest_framework.permissions import AllowAny, IsAuthenticated
+
+from django.db.models import Q, Prefetch, F, Count
+from django.utils.timezone import now
+from django.db import IntegrityError
 from django.contrib.auth.models import User
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
-from django.contrib.auth import update_session_auth_hash
-from django.db import IntegrityError
+
+from .models import (
+    Restaurant,
+    Promo,
+    Menu,
+    RestaurantImage,
+    ExpiringToken,
+    VerificationCode
+)
+from .serializers import (
+    RestaurantMiniSerializer,
+    RestaurantSerializer,
+    PromoSerializer,
+    MenuSerializer,
+    Category,
+    CategorySerializer,
+    RegisterSerializer,
+    LoginSerializer,
+    UserSerializer,
+    UserUpdateSerializer,
+    UserProfileSerializer,
+    CustomTokenObtainPairSerializer,
+    RestaurantSearchSerializer,
+    PromoSearchSerializer,
+    MenuSearchSerializer,
+)
 from .utils import send_confirmation_email
+
 from google.oauth2.id_token import verify_oauth2_token
 from google.auth.transport.requests import Request
 
@@ -119,57 +151,99 @@ class RestaurantMiniListView(generics.ListAPIView):
 class PromoViewSet(viewsets.ModelViewSet):
     queryset = Promo.objects.all()
     serializer_class = PromoSerializer
-
     permission_classes = [AllowAny]
+
+    def get_filtered_promos(self, user, restaurant_id=None):
+        """
+        Shared logic for filtering promos based on user type and other conditions.
+        """
+        current_date = now().date()
+        # Initial query includes all promos
+        promos = Promo.objects.all()
+
+        # If restaurant_id is provided, include promos for that restaurant or no restaurant (DineEase promos)
+        if restaurant_id is not None:
+            promos = promos.filter(Q(restaurant_id=restaurant_id) | Q(restaurant__isnull=True))
+            print(f"Initial promos for restaurant {restaurant_id} (including DineEase promos): {promos}")
+        else:
+            print(f"Initial promos (global): {promos}")
+
+        if user.is_authenticated:
+            profile = getattr(user, 'profile', None)
+
+            if profile and profile.type_of_user == 'admin':
+                # Admins: Include promos without restaurants
+                promos = promos.filter(Q(restaurant__isnull=True) | Q(restaurant_id=restaurant_id))
+                print(f"Admin detected. Promos: {promos}")
+
+            elif profile and profile.type_of_user == 'restaurant_owner':
+                # Restaurant owners: Include only their own promos
+                promos = promos.filter(restaurant__owner=user)
+                print(f"Restaurant owner detected. Owned promos: {promos}")
+
+            else:
+                # Customers: Apply filters for active promos, valid dates, and specific promo types
+                print("Customer detected. Applying customer-specific filters.")
+                promos = promos.filter(
+                    Q(status='active'),
+                    Q(start_date__isnull=True) | Q(start_date__lte=current_date),
+                    Q(end_date__isnull=True) | Q(end_date__gte=current_date),
+                    promo_type__in=['restaurant', 'dineease']  # Include only restaurant and DineEase promos
+                )
+                print(f"After status and promo_type filters: {promos}")
+
+                # Apply minimum order filter
+                order_total = self.request.query_params.get('order_total', 0)
+                promos = promos.filter(
+                    Q(minimum_order__isnull=True) | Q(minimum_order__lte=order_total)
+                )
+                print(f"After minimum_order filter: {promos}")
+
+                # Annotate usage counts and exclude overused promos
+                promos = promos.annotate(
+                    total_usages=Count('usages', filter=Q(usages__status='approved')),
+                    customer_usages=Count(
+                        'usages',
+                        filter=Q(usages__status='approved', usages__customer=user)
+                    )
+                ).exclude(
+                    Q(usage_limit__isnull=False, total_usages__gte=F('usage_limit')) |
+                    Q(
+                        usage_limit_per_customer__isnull=False,
+                        customer_usages__gte=F('usage_limit_per_customer')
+                    )
+                )
+                print(f"After usage limits exclusion: {promos}")
+
+        else:
+            # Unauthenticated users: Apply active and valid date filters
+            print("Unauthenticated user detected. Applying basic filters.")
+            promos = promos.filter(
+                Q(status='active'),
+                Q(start_date__isnull=True) | Q(start_date__lte=current_date),
+                Q(end_date__isnull=True) | Q(end_date__gte=current_date)
+            )
+            print(f"Unauthenticated filtered promos: {promos}")
+
+        return promos.distinct()
 
     def get_queryset(self):
         """
-        Exclude promos that have been used and approved by the current user.
-        If the user is an admin or restaurant owner, show promos related to their restaurants.
+        Main queryset logic shared across the viewset.
         """
-        user = self.request.user
-
-        # Check if the user is authenticated
-        if user.is_authenticated:
-            profile = getattr(user, 'profile', None)
-            
-            # If user is admin or restaurant owner, return promos for their restaurants
-            if profile and profile.type_of_user in ['admin', 'restaurant_owner']:
-                return Promo.objects.filter(restaurant__owner=user).distinct()
-
-            # Exclude promos that have been used and approved by the current user
-            return Promo.objects.exclude(
-                usages__customer=user,
-                usages__status="approved"
-            ).distinct()
-
-        # For unauthenticated users, return all promos
-        return super().get_queryset()
+        return self.get_filtered_promos(user=self.request.user)
 
     @action(detail=False, methods=['get'], url_path='restaurant/(?P<restaurant_id>[^/.]+)')
     def by_restaurant(self, request, restaurant_id=None):
         """
-        Custom action to get promos by restaurant ID and optionally by promo_type.
-        If the user is an admin or owner, ensure they only access their restaurant's promos.
+        Retrieve promos specific to a given restaurant with appropriate filtering.
         """
-        promo_type = request.query_params.get('promo_type', None)
-        user = request.user
+        promos = self.get_filtered_promos(user=self.request.user, restaurant_id=restaurant_id)
 
-        # Base queryset filtered by restaurant ID
-        promos = self.get_queryset().filter(restaurant_id=restaurant_id)
-
-        # For admin or restaurant owners, ensure they only access their promos
-        if user.is_authenticated:
-            profile = getattr(user, 'profile', None)
-            if profile and profile.type_of_user in ['admin', 'restaurant_owner']:
-                promos = promos.filter(restaurant__owner=user)
-
-        # Further filter by promo_type if provided
-        if promo_type:
-            promos = promos.filter(promo_type=promo_type)
-
+        # Serialize and return filtered promos
         serializer = self.get_serializer(promos, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class MenuViewSet(viewsets.ModelViewSet):
     queryset = Menu.objects.all().prefetch_related(
@@ -452,3 +526,37 @@ class GoogleAuthView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class SearchView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        query = request.query_params.get('query', '').strip()
+
+        if not query:
+            return Response({"error": "Query parameter 'query' is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user if request.user.is_authenticated else None
+        type_of_user = getattr(user.profile, 'type_of_user', 'customer') if user else 'customer'
+
+        if type_of_user == 'restaurant_owner':
+            # Show owned promos and unrestricted restaurants and menus
+            restaurant_results = Restaurant.objects.filter(owner=user)
+            promo_results = Promo.objects.filter(restaurant__owner=user, name__icontains=query)
+            menu_results = Menu.objects.filter(restaurant__owner=user, name__icontains=query)
+        else:
+            # For customers or unauthenticated users, show unrestricted restaurants and menus
+            restaurant_results = Restaurant.objects.filter(name__icontains=query)
+            promo_results = Promo.objects.none()  # No promos for customers
+            menu_results = Menu.objects.filter(name__icontains=query)
+
+        results = (
+            RestaurantSearchSerializer(restaurant_results, many=True).data +
+            PromoSearchSerializer(promo_results, many=True).data +
+            MenuSearchSerializer(menu_results, many=True).data
+        )
+
+        # Sort results by name
+        results = sorted(results, key=lambda x: x['name'])
+
+        return Response(results, status=status.HTTP_200_OK)

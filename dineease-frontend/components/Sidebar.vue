@@ -69,9 +69,9 @@
   
   // Navigation configuration
   const navigationItems = [
-    { label: 'Dashboard', path: '/', icon: Home },
+    { label: 'Incoming Orders', path: '/', icon: Home },
     // { label: 'Orders', path: '/order', icon: ShoppingCart, badge: 6 },
-    { label: 'Restaurant', path: '/restaurants', icon: UtensilsCrossed },
+    { label: 'My Restaurant', path: '/restaurants', icon: UtensilsCrossed },
     { label: 'Menus', path: '/menus', icon: SquareMenu },
     { label: 'Promos', path: '/promos', icon: Package },
     { label: 'Settings', path: '/account', icon: Settings },

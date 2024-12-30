@@ -31,6 +31,7 @@ class Tax(models.Model):
         default=default_service_fee_thresholds,
         help_text="Define thresholds for service fees. E.g., {'<30': 2, '30-50': 3, '50-100': 4.29, '>=100': 6.29}"
     )
+    is_active = models.BooleanField(default=True, help_text="Indicates whether the tax rate is active.")
 
     def get_service_fee(self, order_total):
         """Determine the service fee based on the thresholds."""
@@ -46,7 +47,7 @@ class Tax(models.Model):
         return 0  # Default fee if no match
 
     def __str__(self):
-        return f"{self.get_province_display()} - Tax: {self.rate}%"
+        return f"{self.get_province_display()} - Tax: {self.rate}% {'(Active)' if self.is_active else '(Inactive)'}"
     
 class Order(models.Model):
     customer = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='orders')

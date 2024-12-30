@@ -7,6 +7,7 @@ from django.contrib.gis.geos import Point
 from datetime import datetime
 from django.utils.timezone import now, localtime, activate
 import json
+from .utils import parse_coordinates
 
 class RestaurantImageSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(use_url=True)
@@ -185,6 +186,22 @@ class RestaurantSerializer(serializers.ModelSerializer):
             return False
 
         return False
+    
+    def create(self, validated_data):
+        coordinates = self.initial_data.get('coordinates')
+        try:
+            validated_data['coordinates'] = parse_coordinates(coordinates)
+        except ValueError as e:
+            raise serializers.ValidationError({"coordinates": str(e)})
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        coordinates = self.initial_data.get('coordinates')
+        try:
+            validated_data['coordinates'] = parse_coordinates(coordinates)
+        except ValueError as e:
+            raise serializers.ValidationError({"coordinates": str(e)})
+        return super().update(instance, validated_data)
 
 class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=False, allow_blank=True)
@@ -343,8 +360,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile', 'active_restaurant', 'has_pending_orders']
 
     def get_active_restaurant(self, obj):
-        # Get the user's active restaurant
-        active_restaurant = obj.restaurants.filter(status='active').first()
+        active_restaurant = obj.restaurants.exclude(status='archived').first()
         if active_restaurant:
             return {
                 'id': active_restaurant.id,
@@ -389,3 +405,35 @@ class UserUpdateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({'confirm_password': 'New passwords do not match.'})
 
         return data
+    
+class RestaurantSearchSerializer(serializers.ModelSerializer):
+    type = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Restaurant
+        fields = ('id', 'name', 'type')
+
+    def get_type(self, obj):
+        return 'restaurant'
+
+class PromoSearchSerializer(serializers.ModelSerializer):
+    type = serializers.SerializerMethodField()
+    restaurant_details = RestaurantMiniSerializer(source='restaurant', read_only=True)
+
+    class Meta:
+        model = Promo
+        fields = ('id', 'name', 'type', 'restaurant_details')
+
+    def get_type(self, obj):
+        return 'promo'
+
+class MenuSearchSerializer(serializers.ModelSerializer):
+    type = serializers.SerializerMethodField()
+    restaurant_details = RestaurantMiniSerializer(source='restaurant', read_only=True)
+
+    class Meta:
+        model = Menu
+        fields = ('id', 'name', 'type', 'restaurant_details')
+
+    def get_type(self, obj):
+        return 'menu'

@@ -92,6 +92,8 @@ import { useApiEndpoints } from '@/composables/useApiRestaurants.js'
 import { CirclePlus } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import SkeletonLoader from '@/components/Skeleton/SkeletonLoading'
+import { useBreadcrumb } from '@/composables/useBreadcrumb';
+const { setBreadcrumbs } = useBreadcrumb();
 
 const menus = ref([])
 const groupedMenus = ref({})
@@ -121,6 +123,10 @@ onMounted(async () => {
   } finally {
     isLoading.value = false
   }
+  setBreadcrumbs([
+    { label: 'Dashboard', path: '/' },
+    { label: 'Menus', isCurrent: true },
+  ]);
 })
 
 // Handler for adding a menu

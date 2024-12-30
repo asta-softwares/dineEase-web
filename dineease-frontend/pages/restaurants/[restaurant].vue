@@ -1,5 +1,17 @@
 <template>
-    <div>
+  <!-- Show when user has no active restaurant -->
+  <div v-if="!activeRestaurant" class="flex flex-col items-center justify-center p-8">
+    <img src="/images/product.svg" alt="No Restaurant" class="w-64 h-64" />
+    <h1 class="text-2xl font-semibold">No Restaurants Available</h1>
+    <span class="text-gray-500 mb-4">
+      Start by adding your first restaurant to manage your listings.
+    </span>
+    <Button @click="handleAddRestaurant">
+      <CirclePlus class="mr-2 h-4 w-4" />
+      Add Restaurant
+    </Button>
+  </div>
+    <div v-else>
       <div v-if="pending" class="loading-container">
         Loading...
       </div>
@@ -7,14 +19,16 @@
         <p>Error loading restaurant data: {{ error }}</p>
       </div>
       <div v-else class="flex flex-col gap-4 p-4 pt-0">
+        <StripeBanner />
         <div class="border p-4 rounded-lg flex flex-col gap-4">
           <div class="flex items-start gap-4">
             <img
-              :src="restaurant.image"
+              :src="restaurant.image || '/images/logo.svg'"
               :alt="restaurant.name"
               class="w-[150px] h-[150px] rounded-md object-cover"
             />
-            <div class="flex flex-col gap-2">
+            
+            <div class="flex flex-col gap-4">
               <!-- Breadcrumb Navigation -->
               <div class="flex items-center gap-2 text-sm text-gray-600">
                 <BreadcrumbNav :items="categories" :separator="Dot" />
@@ -24,7 +38,7 @@
               <div class="flex items-center gap-x-4">
                 <h1 class="text-2xl font-bold">{{ restaurant.name }}</h1>
                 <NuxtLink
-                  :to="`/restaurants/edit/${restaurant.id}`"
+                  :to="`/restaurants/edit/${restaurantId}`"
                   class="text-xs"
                 >
                   <Button type="button" variant="outline" size="sm">
@@ -34,7 +48,7 @@
               </div>
       
               <!-- Delivery Info -->
-              <div class="flex items-center gap-2 text-sm">
+              <div class="flex items-center gap-4 text-sm">
                 <span class="font-medium">Free delivery</span>
                 <span class="line-through text-gray-500">₱29</span>
                 <span>• Min. order ₱{{ restaurant.min_order || '0' }}</span>
@@ -171,38 +185,38 @@
   import { useApiEndpoints } from '@/composables/useApiRestaurants.js'
   import MiniMap from '~/components/Maps/MiniMap.vue';
   import BreadcrumbNav from '@/components/BreadcrumbNav.vue';
-import { tryOnUnmounted } from '@vueuse/core';
-import { Dot, MapPin, Utensils, Phone, Mail, Star } from 'lucide-vue-next'
+import { Dot, MapPin, Utensils, Phone, Mail, Star, CirclePlus } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { sortedOperatingHours } from '~/lib/timeUtils';
 import { useBreadcrumb } from '@/composables/useBreadcrumb';
+import { useUserStore } from '@/stores/user'
+import StripeBanner from '~/components/Forms/StripeBanner';
+const userStore = useUserStore()
 const { setBreadcrumbs } = useBreadcrumb();
   
   const { fetchRestaurantById } = useApiEndpoints()
   const route = useRoute()
+
+  const activeRestaurant = computed(() => userStore.user?.active_restaurant)
+const restaurantId = computed(() => userStore.user?.active_restaurant?.id)
+
   
   // Use asyncData to load the restaurant data
-  const { data: restaurant, pending, error } = await useAsyncData(`restaurant-${route.params.restaurant}`, () =>
-    fetchRestaurantById(route.params.restaurant)
+  const { data: restaurant, pending, error } = await useAsyncData(`restaurant-${restaurantId.value}`, () =>
+    fetchRestaurantById(restaurantId.value)
   )
 
   const coordinates = computed(() => {
     return restaurant.value?.coordinates || []
 })
 
-const breadcrumbItems = ref([
-  { label: 'Home', href: '/' },
-  { label: 'Loading...', href: '#' },
-  { label: 'Edit Details' },
-])
-
 // Update breadcrumbItems when restaurant data is available
 watchEffect(() => {
   if (restaurant.value) {
     setBreadcrumbs([
-      { label: 'Home', href: '/' },
-      { label: 'Restaurant List', href: `/restaurants/` },
+      { label: 'Home', path: '/' },
+      { label: 'Restaurant List', path: `/restaurants/` },
       { label: restaurant.value.name || 'Name' },
     ]);
   }
@@ -214,7 +228,10 @@ const categories = computed(() => {
   })
 })
 
-  console.log(restaurant)
+const handleAddRestaurant = () => {
+  window.location.href = '/restaurants/create'
+}
+
   </script>
   
   <style scoped>

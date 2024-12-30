@@ -5,7 +5,6 @@
     <div v-else-if="error" class="error-container">Error loading promo: {{ error }}</div>
     <div v-else>
       <h2 class="text-2xl font-bold mb-4">{{ isEditMode ? 'Edit Promo' : 'Create Promo' }}</h2>
-      <BreadcrumbNav :items="breadcrumbItems" />
       <PromoForm class="mt-4" :initial-data="promo" :is-edit-mode="isEditMode" @submit="savePromo" />
     </div>
   </div>
@@ -14,8 +13,9 @@
 <script setup>
 import { useApiEndpoints } from '@/composables/useApiRestaurants'
 import PromoForm from '@/components/Forms/PromoForm'
-import BreadcrumbNav from '@/components/BreadcrumbNav'
 import { toast } from '@/components/ui/toast'
+import { useBreadcrumb } from '@/composables/useBreadcrumb';
+const { setBreadcrumbs } = useBreadcrumb();
 
 const { fetchPromoById, editPromo, createPromo } = useApiEndpoints()
 const route = useRoute()
@@ -27,17 +27,13 @@ const { data: promo, pending, error } = await useAsyncData(
   () => fetchPromoById(route.params.promo)
 )
 
-console.log(promo)
-// Breadcrumb items
-const breadcrumbItems = ref([
-  { label: 'Dashboard', href: '/' },
-  { label: promo.value?.restaurant_details.name || 'Name', href: `/restaurants/${promo.value?.restaurant_details.id}` },
-  { label: 'Promos', href: '/promos' },
+setBreadcrumbs([
+  { label: 'Dashboard', path: '/' },
+  { label: promo.value?.restaurant_details.name || 'Name', path: `/restaurants/${promo.value?.restaurant_details.id}` },
+  { label: 'Promos', path: '/promos' },
   { label: promo.value?.name || 'Name' },
-  { label: isEditMode ? 'Edit Promo' : 'Create Promo' },
 ])
 
-// Save promo (create or update)
 const savePromo = async (formData) => {
   try {
     let action = 'created'

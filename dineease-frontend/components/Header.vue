@@ -47,8 +47,7 @@
         </BreadcrumbList>
       </Breadcrumb>
       <div class="relative ml-auto flex-1 md:grow-0">
-        <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input type="search" placeholder="Search..." class="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[336px]" />
+        <Search />
       </div>
       <UserNav />
     </header>
@@ -73,7 +72,6 @@
     Package,
     Package2,
     Menu,
-    Search,
     ShoppingCart,
     Users,
     LineChart,
@@ -82,11 +80,12 @@
     SquareMenu
   } from 'lucide-vue-next';
   import { useRoute } from 'vue-router';
+  import Search from '@/components/Search';
   
   const navigationItems = [
     { label: 'Dashboard', path: '/', icon: Home },
     // { label: 'Orders', path: '/order', icon: ShoppingCart, badge: 6 },
-    { label: 'Restaurant', path: '/restaurants', icon: UtensilsCrossed },
+    { label: 'My Restaurant', path: '/restaurants', icon: UtensilsCrossed },
     { label: 'Menus', path: '/menus', icon: SquareMenu },
     { label: 'Promos', path: '/promos', icon: Package },
     { label: 'Settings', path: '/account', icon: Settings },

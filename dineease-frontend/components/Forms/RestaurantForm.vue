@@ -153,6 +153,17 @@
       </FormField>
     </div>
 
+    <FormField v-slot="{ componentField }" name="description">
+      <FormItem>
+        <FormLabel>Description</FormLabel>
+        <FormControl>
+          <Textarea class="w-full border rounded-md p-2" rows="4" placeholder="Description" v-bind="componentField" />
+        </FormControl>
+        <FormDescription>Provide the description for your restaurant.</FormDescription>
+        <FormMessage />
+      </FormItem>
+    </FormField>
+
     <OperatingHours v-model="operatingHours" :data="initialData?.operating_hours" />
 
     <!-- Coordinates Field -->
@@ -170,7 +181,7 @@
     <MiniMap class="h-[500px] my-4" v-model="selectedCoordinates" :coordinates="selectedCoordinates" :is-edit-mode="true" />
 
     <!-- Stripe Account Field -->
-    <FormField v-slot="{ componentField }" name="stripe_account_id">
+    <FormField v-if="isEditMode" v-slot="{ componentField }" name="stripe_account_id">
       <FormItem>
         <FormLabel>Stripe Account</FormLabel>
         <FormControl>
@@ -189,12 +200,47 @@
     <!-- Submit Button -->
     <div class="mt-6 flex gap-4 items-start">
       <Button type="submit">{{ isEditMode ? 'Update Restaurant' : 'Create Restaurant' }}</Button>
+      <div class="flex items-start gap-4 relative">
+        <!-- Delete Button -->
+        <Button 
+          v-if="isEditMode" 
+          type="button" 
+          variant="destructive" 
+          @click="toggleDeleteConfirmation"
+        >
+          Archive Restaurant
+        </Button>
+
+        <!-- Confirmation Prompt -->
+        <div v-if="showDeleteConfirmation" class="flex flex-col gap-y-4 ml-4">
+          <span>Are you sure you want to Archive this Restaurant?</span>
+          <div class="flex items-center gap-2">
+            <Button 
+              type="button" 
+              variant="destructive" 
+              size="sm" 
+              @click="handleDelete"
+              :disabled="isDeleting"
+            >
+              {{ isDeleting ? 'Deleting...' : 'Confirm Archive' }}
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm" 
+              @click="toggleDeleteConfirmation"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+
+      </div>
     </div>
   </form>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
@@ -207,8 +253,10 @@ import OperatingHours from '../Time/OperatingHours'
 import { useApiEndpoints } from '@/composables/useApiRestaurants'
 import { toast } from '@/components/ui/toast'
 import MiniMap from '@/components/Maps/MiniMap.vue'
+import { useUserStore } from '@/stores/user'
 
-const { deleteRestaurant, createStripeOnboardingLink } = useApiEndpoints()
+const { deleteRestaurant, editRestaurant, createStripeOnboardingLink } = useApiEndpoints()
+const userStore = useUserStore()
 const router = useRouter()
 const route = useRoute()
 const isDeleting = ref(false)
@@ -255,7 +303,7 @@ const handleStripeOnboarding = async () => {
 const restaurantFormSchema = toTypedSchema(
   z.object({
     name: z.string().min(2, 'Name is required'),
-    description: z.string().min(10, 'Description is required'),
+    description: z.string().optional(),
     location: z.string().min(2, 'Location is required'),
     service_type: z.string(),
     email: z.string().email('Invalid email').optional(),
@@ -263,7 +311,6 @@ const restaurantFormSchema = toTypedSchema(
     ratings: z.number().min(0).max(5).optional(),
     status: z.string().optional(),
     category: z.any().optional(),
-    coordinates: z.string().optional(),
     coordinates: z.string().optional(),
     stripe_account_id: z.string().optional(),
   })
@@ -293,7 +340,10 @@ const toggleDeleteConfirmation = () => {
 const handleDelete = async () => {
   try {
     isDeleting.value = true
-    await deleteRestaurant(route.params.restaurant)
+    const formData = new FormData();
+    formData.append('status', 'archived')
+
+    await editRestaurant(route.params.restaurant, formData)
 
     // Show success toast notification
     toast({
@@ -350,8 +400,10 @@ const onSubmit = handleSubmit((values) => {
   formData.append('ratings', values.ratings ?? '');
   formData.append('status', values.status);
   formData.append('category', values.category ?? '');
-  formData.append('coordinates', JSON.stringify(selectedCoordinates.value) || undefined);
+  formData.append('owner', userStore.user.id ?? '');
+  formData.append('coordinates', selectedCoordinates.value ? selectedCoordinates.value.join(',') : undefined);
 
+  console.log("COORDINATES", selectedCoordinates.value)
   if (operatingHours.value) {
     formData.append('operating_hours', JSON.stringify(operatingHours.value));
   }
@@ -363,7 +415,6 @@ const onSubmit = handleSubmit((values) => {
   //   });
   // }
 
-  // Append image if it exists
   if (imageFile.value) {
     formData.append('image', imageFile.value);
   }

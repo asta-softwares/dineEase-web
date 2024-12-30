@@ -8,6 +8,16 @@ export function useApiEndpoints() {
   }
 
   // --- Restaurant Endpoints ---
+  const createRestaurant = async (restaurantData) => {
+    const { data, error } = await useFetch(`${baseUrl}restaurants/`, {
+      method: 'POST',
+      headers,
+      body: restaurantData,
+    })
+    if (error.value) throw error.value
+    return data.value
+  }
+
   const fetchRestaurants = async () => {
     const { data, error } = await useFetch(`${baseUrl}restaurants/`, {
       method: 'GET',
@@ -74,7 +84,7 @@ export function useApiEndpoints() {
 
   // --- Promo Endpoints ---
   const fetchPromos = async () => {
-    const { data, error } = await useFetch(`${baseUrl}promos/`, {
+    const { data, error } = await useFetch(`${baseUrl}promos/restaurant/1`, {
       method: 'GET',
       headers,
     })
@@ -185,6 +195,7 @@ export function useApiEndpoints() {
   }
   
   return {
+    createRestaurant,
     fetchRestaurants,
     fetchRestaurantById,
     editRestaurant,

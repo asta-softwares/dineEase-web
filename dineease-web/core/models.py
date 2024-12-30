@@ -32,6 +32,7 @@ class Restaurant(models.Model):
         ('inactive', 'Inactive'),
         ('pending', 'Pending'),
         ('premium', 'Premium'),
+        ('archived', 'Archived'),
     )
 
     SERVICE_TYPES = (
@@ -41,7 +42,7 @@ class Restaurant(models.Model):
     )
 
     name = models.CharField(max_length=255)
-    image = models.ImageField(upload_to='restaurant_images/')
+    image = models.ImageField(upload_to='restaurant_images/', null=True, blank=True)
     categories = models.ManyToManyField(
         Category,
         blank=True,

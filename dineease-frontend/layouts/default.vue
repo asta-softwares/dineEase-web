@@ -55,7 +55,7 @@ const loading = ref(true)
 const error = ref(null)
 
 const user = computed(() => userStore.user)
-const { breadcrumbs } = useBreadcrumb();
+const { breadcrumbs, setBreadcrumbs } = useBreadcrumb();
 
 // Load User Data
 const { data, pending, error: fetchError } = await useAsyncData('user-data', async () => {
@@ -76,6 +76,10 @@ watchEffect(() => {
   }
   error.value = fetchError.value
 })
+
+watch(() => route.fullPath, () => {
+  setBreadcrumbs([]);
+});
 
 const computedGridClass = computed(() => {
   return user.value

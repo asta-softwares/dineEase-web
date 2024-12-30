@@ -33,9 +33,9 @@ const { data: restaurant, pending, error } = await useAsyncData(
 watchEffect(() => {
   if (restaurant.value) {
     setBreadcrumbs([
-      { label: 'Dashboard', href: '/' },
-      { label: 'Restaurant List', href: '/restaurants' },
-      { label: restaurant.value.name || 'Name', href: `/restaurants/${restaurant.value.id}` },
+      { label: 'Dashboard', path: '/' },
+      { label: 'Restaurant List', path: '/restaurants' },
+      { label: restaurant.value.name || 'Name', path: `/restaurants/${restaurant.value.id}` },
       { label: 'Edit Restaurant Details' },
     ]);
   }
@@ -44,12 +44,11 @@ watchEffect(() => {
 // Function to handle restaurant update
 const updateRestaurant = async (formData) => {
   try {
-    let action = 'created'
+    let action = 'updated'
     let restaurantName = formData.get('name') || 'Restaurant'
 
     if (isEditMode) {
       await editRestaurant(route.params.restaurant, formData)
-      action = 'updated'
     }
     // Redirect to the restaurants page
     router.push(`/restaurants/${route.params.restaurant}`)
@@ -59,7 +58,6 @@ const updateRestaurant = async (formData) => {
       title: `Restaurant ${action.charAt(0).toUpperCase() + action.slice(1)} Successfully`,
       description: `The restaurant "${restaurantName}" has been ${action}.`,
       variant: 'success',
-      position: 'center',
     })
   } catch (error) {
     console.error('Error updating restaurant:', error)
@@ -69,7 +67,6 @@ const updateRestaurant = async (formData) => {
       title: 'Error Saving Restaurant',
       description: 'An error occurred while saving the restaurant. Please try again.',
       variant: 'destructive',
-      position: 'center',
     })
   }
 }

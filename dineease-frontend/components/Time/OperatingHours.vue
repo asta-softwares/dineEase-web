@@ -164,7 +164,8 @@ const convertTo24HourFormat = (time) => {
 onMounted(() => {
   if (props.data) {
     hoursData.value = transformOperatingHours(props.data)
-    emit('update:modelValue', formatOperatingHours())
   }
+
+  emit('update:modelValue', formatOperatingHours())
 })
 </script>
