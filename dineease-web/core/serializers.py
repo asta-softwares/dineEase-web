@@ -85,15 +85,15 @@ class MenuSerializer(serializers.ModelSerializer):
         """
         promo = obj.promos.filter(status='active').order_by('-priority_index').first()
         if not promo:
-            return None
+            return obj.cost  # Return the original cost if no active promo exists
 
         # Calculate the discounted price
-        if promo.discount_type == 'percentage':
+        if promo.discount_type == 'percentage' and promo.discount:
             discount = obj.cost * (promo.discount / 100)
-        elif promo.discount_type == 'fixed':
+        elif promo.discount_type == 'fixed' and promo.discount:
             discount = promo.discount
         else:
-            discount = 0
+            return obj.cost  # Return the original cost if the discount is empty or invalid
 
         discounted_price = max(obj.cost - discount, 0)
         return round(discounted_price, 2)
@@ -119,6 +119,7 @@ class RestaurantSerializer(serializers.ModelSerializer):
     coordinates = serializers.SerializerMethodField()
     distance = serializers.SerializerMethodField()
     is_open = serializers.SerializerMethodField()
+    operating_hours = serializers.SerializerMethodField()
 
     class Meta:
         model = Restaurant
@@ -149,6 +150,14 @@ class RestaurantSerializer(serializers.ModelSerializer):
         if hasattr(obj, 'distance') and obj.distance:
             return round(obj.distance.km, 2)
         return None
+    
+    def get_operating_hours(self, obj):
+        """
+        Sort the operating hours from Monday to Sunday.
+        """
+        day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        operating_hours = obj.operating_hours or {}
+        return {day: operating_hours.get(day, "Closed") for day in day_order}
     
     def get_is_open(self, obj):
         # activate('Asia/Manila') 
