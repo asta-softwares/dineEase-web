@@ -19,7 +19,7 @@ class RestaurantImageSerializer(serializers.ModelSerializer):
 class RestaurantMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = Restaurant
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'image']
         
 class PromoSerializer(serializers.ModelSerializer):
     restaurant = serializers.PrimaryKeyRelatedField(queryset=Restaurant.objects.all(), write_only=True)
