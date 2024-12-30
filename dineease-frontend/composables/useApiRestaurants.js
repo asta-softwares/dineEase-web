@@ -84,7 +84,7 @@ export function useApiEndpoints() {
 
   // --- Promo Endpoints ---
   const fetchPromos = async () => {
-    const { data, error } = await useFetch(`${baseUrl}promos/restaurant/1`, {
+    const { data, error } = await useFetch(`${baseUrl}promos/`, {
       method: 'GET',
       headers,
     })
