@@ -23,18 +23,40 @@ class PromoUsage(models.Model):
         return f"{self.customer.username} attempted {self.promo.name} - {self.status}"
 
 def default_service_fee_thresholds():
-    return {'<30': 2, '30-50': 3, '50-100': 4.29, '>=100': 6.29} 
+    """
+    Define thresholds for service fees:
+    Below $25 - $0.49
+    $25-50 - $0.99
+    $50-75 - $1.49
+    $75-100 - $1.99
+    Increase $0.50 for every $25 spent.
+    """
+    return {
+        '<25': 0.49,
+        '25-50': 0.99,
+        '50-75': 1.49,
+        '75-100': 1.99,
+        '>=100': 2.49,  # Increment by $0.50 for every $25 spent beyond $100
+    }
+
 class Tax(models.Model):
     province = models.CharField(max_length=2, choices=CANADA_PROVINCE_CHOICES, unique=True)
     rate = models.DecimalField(max_digits=5, decimal_places=2, help_text="Tax rate as a percentage (e.g., 5 for 5%)")
     service_fee_thresholds = models.JSONField(
         default=default_service_fee_thresholds,
-        help_text="Define thresholds for service fees. E.g., {'<30': 2, '30-50': 3, '50-100': 4.29, '>=100': 6.29}"
+        help_text="Define thresholds for service fees. E.g., {'<25': 0.49, '25-50': 0.99, '50-75': 1.49, '>=100': 2.49}"
     )
     is_active = models.BooleanField(default=True, help_text="Indicates whether the tax rate is active.")
 
     def get_service_fee(self, order_total):
-        """Determine the service fee based on the thresholds."""
+        """
+        Determine the service fee based on the thresholds:
+        - Below $25: $0.49
+        - $25-50: $0.99
+        - $50-75: $1.49
+        - $75-100: $1.99
+        - Every additional $25 beyond $100 adds $0.50.
+        """
         for key, fee in self.service_fee_thresholds.items():
             if key.startswith('<') and order_total < float(key[1:]):
                 return fee
@@ -43,7 +65,11 @@ class Tax(models.Model):
                 if low <= order_total < high:
                     return fee
             elif key.startswith('>=') and order_total >= float(key[2:]):
-                return fee
+                # Calculate increments beyond $100 dynamically
+                base_fee = fee
+                additional_amount = order_total - 100
+                additional_increments = int(additional_amount // 25)  # Count $25 increments
+                return base_fee + (additional_increments * 0.50)
         return 0  # Default fee if no match
 
     def __str__(self):

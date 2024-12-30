@@ -6,7 +6,7 @@
     <Sidebar v-if="user"/>
     <!-- Main Content Wrapper -->
     <div class="relative z-10 flex flex-1 flex-col">
-      <div class="absolute inset-0 bg-short-bg bg-no-repeat bg-center opacity-20 -z-10"></div>
+      <div class="absolute inset-0 bg-short-bg bg-no-repeat h-screen bg-center opacity-20 -z-10"></div>
       <Toaster />
       <NuxtLoadingIndicator />
   

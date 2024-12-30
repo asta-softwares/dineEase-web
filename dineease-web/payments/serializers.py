@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import Order, OrderItem, Payment, Refund, Tax
 from core.models import Menu, AddonOption, Restaurant, Promo
-from core.serializers import MenuMiniSerializer, UserSerializer, PromoMiniSerializer
+from core.serializers import MenuMiniSerializer, UserSerializer, PromoMiniSerializer, RestaurantMiniSerializer
 from decimal import Decimal
 
 class RefundSerializer(serializers.ModelSerializer):
@@ -34,7 +34,7 @@ class PaymentSerializer(serializers.ModelSerializer):
         ]
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(source='orderitem_set', many=True)
-    restaurant = serializers.StringRelatedField()
+    restaurant_details = RestaurantMiniSerializer(source='restaurant', read_only=True)
     customer = UserSerializer(read_only=True)
     payment = PaymentSerializer(read_only=True)
     promos = PromoMiniSerializer(many=True, read_only=True)  # Use PromoSerializer for detailed info
@@ -44,7 +44,7 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'customer',
-            'restaurant',
+            'restaurant_details',
             'items',
             'promos',  # Include attached promos
             'order_total',

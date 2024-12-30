@@ -21,6 +21,7 @@ class Category(models.Model):
     description = models.TextField(blank=True)
     image = models.ImageField(upload_to='category_images/', blank=True, null=True)
     category_type = models.CharField(max_length=50, choices=CATEGORY_TYPES)
+    restaurant = models.ForeignKey('Restaurant', on_delete=models.CASCADE, null=True, blank=True)
     priority_index = models.PositiveIntegerField(null=True, blank=True)
 
     def __str__(self):
