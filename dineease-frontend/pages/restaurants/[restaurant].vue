@@ -87,7 +87,7 @@
               class="flex items-start justify-between gap-4 p-2 border rounded-lg shadow-sm"
             >
               <img
-                :src="menu.images[0]?.image"
+                :src="menu.images[0]?.image || '/images/short-bg.svg'"
                 alt="Menu Image"
                 class="w-24 h-24 rounded-md object-cover"
               />

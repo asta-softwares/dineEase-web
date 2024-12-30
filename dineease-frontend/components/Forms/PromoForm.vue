@@ -48,7 +48,7 @@
         </FormItem>
       </FormField>
   
-      <!-- Discount and Discount Type -->
+       <!-- Discount and Discount Type -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField v-slot="{ componentField }" name="discount">
           <FormItem>
@@ -56,10 +56,13 @@
             <FormControl>
               <Input type="number" step="0.01" placeholder="Discount" v-bind="componentField" />
             </FormControl>
+            <FormDescription>
+              Specify the discount amount. This value is interpreted based on the discount type.
+            </FormDescription>
             <FormMessage />
           </FormItem>
         </FormField>
-  
+
         <FormField v-slot="{ componentField }" name="discount_type">
           <FormItem>
             <FormLabel>Discount Type</FormLabel>
@@ -74,6 +77,9 @@
                 <SelectItem value="fixed">Fixed Amount</SelectItem>
               </SelectContent>
             </Select>
+            <FormDescription>
+              Choose the discount type. "Percentage" applies a percentage discount, and "Fixed" deducts a fixed amount.
+            </FormDescription>
             <FormMessage />
           </FormItem>
         </FormField>
@@ -81,21 +87,24 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField v-slot="{ componentField }" name="promo_type">
-            <FormItem>
+          <FormItem>
             <FormLabel>Promo Type</FormLabel>
             <Select v-bind="componentField">
-                <FormControl>
+              <FormControl>
                 <SelectTrigger>
-                    <SelectValue placeholder="Select promo type" />
+                  <SelectValue placeholder="Select promo type" />
                 </SelectTrigger>
-                </FormControl>
-                <SelectContent>
+              </FormControl>
+              <SelectContent>
                 <SelectItem value="menu">Menu</SelectItem>
                 <SelectItem value="restaurant">Restaurant</SelectItem>
-                </SelectContent>
+              </SelectContent>
             </Select>
+            <FormDescription>
+              "Menu" applies to specific menu items, while "Restaurant" applies to the entire restaurant.
+            </FormDescription>
             <FormMessage />
-            </FormItem>
+          </FormItem>
         </FormField>
 
         <FormField v-slot="{ componentField }" name="status">
@@ -130,42 +139,20 @@
         </FormItem>
       </FormField>
   
-      <!-- Start Date and End Date -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField v-slot="{ componentField }" name="start_date">
+        <FormField v-slot="{ componentField }" name="minimum_order">
           <FormItem>
-            <FormLabel>Start Date</FormLabel>
+            <FormLabel>Minimum Order</FormLabel>
             <FormControl>
-              <Input type="date" v-bind="componentField" />
+              <Input type="number" step="0.01" placeholder="Minimum Order" v-bind="componentField" />
             </FormControl>
+            <FormDescription>
+              Specify the minimum order amount required to qualify for this promo.
+            </FormDescription>
             <FormMessage />
           </FormItem>
         </FormField>
-  
-        <FormField v-slot="{ componentField }" name="end_date">
-          <FormItem>
-            <FormLabel>End Date</FormLabel>
-            <FormControl>
-              <Input type="date" v-bind="componentField" />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
-      </div>
-  
-      <!-- Minimum Order -->
-      <FormField v-slot="{ componentField }" name="minimum_order">
-        <FormItem>
-          <FormLabel>Minimum Order</FormLabel>
-          <FormControl>
-            <Input type="number" step="0.01" placeholder="Minimum Order" v-bind="componentField" />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      </FormField>
-  
-      <!-- Code and Usage Limit -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
         <FormField v-slot="{ componentField }" name="code">
           <FormItem>
             <FormLabel>Promo Code</FormLabel>
@@ -175,13 +162,60 @@
             <FormMessage />
           </FormItem>
         </FormField>
+      </div>
   
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField v-slot="{ componentField }" name="usage_limit">
           <FormItem>
             <FormLabel>Usage Limit</FormLabel>
             <FormControl>
               <Input type="number" placeholder="Usage Limit" v-bind="componentField" />
             </FormControl>
+            <FormDescription>
+              Total number of times this promo can be used across all customers.
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        </FormField>
+  
+        <FormField v-slot="{ componentField }" name="usage_limit_per_customer">
+          <FormItem>
+            <FormLabel>Usage Limit Per Customer</FormLabel>
+            <FormControl>
+              <Input type="number" placeholder="Usage Limit Per Customer" v-bind="componentField" />
+            </FormControl>
+            <FormDescription>
+              The maximum number of times an individual customer can use this promo.
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        </FormField>
+      </div>  
+
+      <!-- Start Date and End Date -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormField v-slot="{ componentField }" name="start_date">
+          <FormItem>
+            <FormLabel>Start Date</FormLabel>
+            <FormControl>
+              <Input type="date" v-bind="componentField" />
+            </FormControl>
+            <FormDescription>
+              The date when this promo becomes active. Leave blank for no start date.
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        </FormField>
+
+        <FormField v-slot="{ componentField }" name="end_date">
+          <FormItem>
+            <FormLabel>End Date</FormLabel>
+            <FormControl>
+              <Input type="date" v-bind="componentField" />
+            </FormControl>
+            <FormDescription>
+              The date when this promo expires. Leave blank for no expiry date.
+            </FormDescription>
             <FormMessage />
           </FormItem>
         </FormField>
@@ -321,6 +355,7 @@ const handleDelete = async () => {
       minimum_order: z.number().optional(),
       code: z.any().optional(),
       usage_limit: z.number().optional(),
+      usage_limit_per_customer: z.number().optional(),
       promo_type: z.enum(['menu', 'restaurant']),
       status: z.enum(['active', 'inactive'], { required_error: 'Please select a status.' }),
     })
@@ -340,6 +375,7 @@ const handleDelete = async () => {
     minimum_order: props.initialData?.minimum_order ? parseFloat(props.initialData.minimum_order) : 0,
     code: props.initialData?.code || null,
     usage_limit: props.initialData?.usage_limit || 0,
+    usage_limit_per_customer: props.initialData?.usage_limit_per_customer || 0,
     promo_type: props.initialData?.promo_type || '',
     status: props.initialData?.status || '',
   },
@@ -363,6 +399,7 @@ const onSubmit = handleSubmit((values) => {
   formData.append('minimum_order', values.minimum_order ?? '');
   formData.append('code', values.code ?? '');
   formData.append('usage_limit', values.usage_limit ?? '');
+  formData.append('usage_limit_per_customer', values.usage_limit_per_customer ?? '');
   formData.append('promo_type', values.promo_type);
   formData.append('status', values.status);
 

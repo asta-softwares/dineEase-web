@@ -78,17 +78,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
 import { useApiEndpoints } from '@/composables/useApiRestaurants.js'
 import { CirclePlus } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { sortedOperatingHours } from '~/lib/timeUtils'
-import SkeletonLoader from '@/components/Skeleton/SkeletonLoading.vue'
+import SkeletonLoader from '@/components/Skeleton/SkeletonLoading'
+import { useBreadcrumb } from '@/composables/useBreadcrumb';
+const { setBreadcrumbs } = useBreadcrumb();
 
 const promos = ref([])
-const isLoading = ref(true) // Loading state
+const isLoading = ref(true)
 const { fetchPromos } = useApiEndpoints()
+
+setBreadcrumbs([
+    { label: 'Dashboard', path: '/' },
+    { label: 'Promos', path: '/promos/' },
+  ])
+  
 
 onMounted(async () => {
   try {
