@@ -1,5 +1,5 @@
 from django.db import models
-from core.models import Restaurant, Menu, AddonOption, Promo
+from core.models import Restaurant, Menu, AddonOption, Promo, VerificationCode
 from django.contrib.auth.models import User
 from core.constants import CANADA_PROVINCE_CHOICES
 from decimal import Decimal
@@ -113,6 +113,7 @@ class Order(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    verification_code = models.OneToOneField(VerificationCode, on_delete=models.CASCADE, null=True, blank=True, related_name='order')
 
     def calculate_totals(self):
         """Calculate discounts, tax, service fee, and final total."""

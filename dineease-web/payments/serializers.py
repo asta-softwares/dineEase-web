@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import Order, OrderItem, Payment, Refund, Tax
 from core.models import Menu, AddonOption, Restaurant, Promo
-from core.serializers import MenuMiniSerializer, UserSerializer, PromoMiniSerializer, RestaurantMiniSerializer
+from core.serializers import MenuMiniSerializer, UserSerializer, PromoMiniSerializer, RestaurantMiniSerializer, VerificationCodeSerializer
 from decimal import Decimal
 
 class RefundSerializer(serializers.ModelSerializer):
@@ -39,7 +39,8 @@ class OrderSerializer(serializers.ModelSerializer):
     restaurant_details = RestaurantMiniSerializer(source='restaurant', read_only=True)
     customer = UserSerializer(read_only=True)
     payment = PaymentSerializer(read_only=True)
-    promos = PromoMiniSerializer(many=True, read_only=True)  # Use PromoSerializer for detailed info
+    promos = PromoMiniSerializer(many=True, read_only=True)
+    verification_code = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -59,6 +60,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'status',
             'order_time',
             'payment',
+            'verification_code'
         ]
         read_only_fields = [
             'order_total',
@@ -69,6 +71,14 @@ class OrderSerializer(serializers.ModelSerializer):
             'service_fee_tax',
             'total',
         ]
+
+    def get_verification_code(self, obj):
+        """
+        Retrieve the `code` from the related `VerificationCode` object.
+        """
+        if obj.verification_code:
+            return obj.verification_code.code
+        return None
 
 
 class OrderPreviewSerializer(serializers.Serializer):

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Restaurant, Promo, Menu, UserProfile, RestaurantImage, AddonCategory, AddonOption, Category
+from .models import Restaurant, Promo, Menu, UserProfile, RestaurantImage, AddonCategory, AddonOption, Category, VerificationCode
 from django.core.exceptions import ValidationError
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.gis.geos import Point
@@ -415,6 +415,11 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
         return data
     
+class VerificationCodeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VerificationCode
+        fields = ['code', 'created_at'] 
+
 class RestaurantSearchSerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
 
