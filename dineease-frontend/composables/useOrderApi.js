@@ -59,6 +59,26 @@ export function useOrderApiEndpoints() {
       }
     }
 
+    const getPaymentMethods = async (email) => {
+      try {
+
+        const { data, error } = await useFetch(`${baseUrl}payments/payment-methods/`, {
+          method: 'GET',
+          headers,
+          query: { email },
+        });
+
+        if (error.value) {
+          throw new Error(error.value.message || 'Failed to fetch payment methods');
+        }
+    
+        return data.value;
+      } catch (err) {
+        console.error('Error fetching payment methods:', err);
+        throw err;
+      }
+    };
+
     const rejectOrder = async (orderId, paymentIntentId) => {
       try {
         const response = await fetch('/api/refund-payment', {
@@ -105,7 +125,8 @@ export function useOrderApiEndpoints() {
       updateOrderStatus,
       updatePaymentStatus,
       createPaymentIntent,
-      rejectOrder
+      rejectOrder,
+      getPaymentMethods
     }
 }
   

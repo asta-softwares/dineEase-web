@@ -3,6 +3,7 @@ from .models import Order, OrderItem, Payment, Promo, PromoUsage, Menu, Restaura
 from .serializers import OrderSerializer, PaymentSerializer, OrderPreviewSerializer
 from django.db import transaction
 from rest_framework.views import APIView
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from asgiref.sync import async_to_sync
@@ -278,11 +279,6 @@ class UpdateOrderStatusView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-from django.conf import settings
-import stripe
-from rest_framework.decorators import api_view
-stripe.api_key = settings.STRIPE_SECRET_KEY
-
 @api_view(['POST'])
 def create_payment_intent(request):
     try:
@@ -349,6 +345,52 @@ def create_payment_intent(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except (ValueError, TypeError) as e:
         return Response({'error': 'Invalid amount provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def get_payment_methods(request):
+    """
+    Retrieve saved payment methods (cards) for the authenticated user.
+    """
+    try:
+        # Ensure the user is authenticated
+        user = request.user
+        if not user.is_authenticated:
+            return Response({'error': 'User must be authenticated to retrieve payment methods.'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get the email of the authenticated user
+        email = user.email
+
+        # Retrieve the user's Stripe customer object
+        customers = stripe.Customer.list(email=email, limit=1)
+        if not customers.data:
+            return Response({'payment_methods': []}, status=status.HTTP_200_OK)  # No customer found, return empty list
+        
+        customer = customers.data[0]  # Get the first matched customer
+
+        # Retrieve saved payment methods (cards) for the Stripe customer
+        payment_methods = stripe.PaymentMethod.list(
+            customer=customer.id,
+            type='card'
+        )
+
+        # Format the payment methods
+        formatted_methods = [
+            {
+                'id': pm.id,
+                'brand': pm.card.brand,
+                'last4': pm.card.last4,
+                'exp_month': pm.card.exp_month,
+                'exp_year': pm.card.exp_year
+            }
+            for pm in payment_methods.data
+        ]
+
+        return Response({'payment_methods': formatted_methods}, status=status.HTTP_200_OK)
+    
+    except stripe.error.StripeError as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @api_view(['POST'])
 def refund_payment(request):
