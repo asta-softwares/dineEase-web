@@ -105,6 +105,12 @@ class Order(models.Model):
     service_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     service_fee_tax = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     total = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
+    stripe_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    restaurant_payment_before_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))  # Restaurant payment before Stripe fee
+    restaurant_payment = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))  # Final restaurant payment after Stripe fee
+    platform_revenue = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))  # Revenue retained by the platform
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -116,6 +122,7 @@ class Order(models.Model):
         # Fetch tax rate and service fee thresholds
         tax = Tax.objects.filter(province=self.restaurant.province).first()
         if not tax:
+            # No tax configuration; set defaults
             self.tax_rate = Decimal(0)
             self.tax_amount = Decimal(0)
             self.service_fee = Decimal(0)
@@ -125,8 +132,6 @@ class Order(models.Model):
 
         # Sort promos: apply percentage discounts first, then fixed discounts
         sorted_promos = sorted(self.promos.all(), key=lambda promo: promo.discount_type == 'fixed')
-
-        print("PROMOS", sorted_promos)
 
         # Calculate total discount
         self.discount = Decimal(0)
@@ -156,6 +161,7 @@ class Order(models.Model):
         self.total = discounted_total + self.tax_amount + self.service_fee + self.service_fee_tax
 
     def save(self, *args, **kwargs):
+        """Override save method to calculate totals before saving."""
         # Check if the instance is new (no primary key)
         if not self.pk:
             # Save to generate a primary key
@@ -166,7 +172,7 @@ class Order(models.Model):
 
         # Save the instance again to persist calculated fields
         super().save(update_fields=[
-            'tax_rate', 'discount', 'tax_amount', 
+            'discount', 'tax_rate', 'tax_amount',
             'service_fee', 'service_fee_tax', 'total'
         ])
 
@@ -188,6 +194,7 @@ class OrderItem(models.Model):
 class Payment(models.Model):
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='payment')
     payment_method = models.CharField(max_length=50, choices=[
+        ('card', 'Card'),
         ('credit_card', 'Credit Card'),
         ('cash', 'Cash'),
         ('mobile_payment', 'Mobile Payment'),
@@ -214,6 +221,10 @@ class Payment(models.Model):
         ('manual', 'Manual')
     ])
     refund_id = models.CharField(max_length=255, null=True, blank=True)
+    card_brand = models.CharField(max_length=50, null=True, blank=True)
+    card_last4 = models.CharField(max_length=4, null=True, blank=True)
+    card_exp_month = models.PositiveIntegerField(null=True, blank=True)
+    card_exp_year = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -9,6 +9,9 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from rest_framework.pagination import PageNumberPagination
 from decimal import Decimal
+import stripe
+from django.conf import settings
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 stripe_status_mapping = {
     'requires_payment_method': 'pending',
@@ -70,6 +73,7 @@ class CreateOrderView(APIView):
             customer = request.user
             promo_ids = data.get('promo_ids', [])
             owner_id = data['owner_id']
+            payment_id = data['transaction_id']
 
             # Validate Promos
             promos = Promo.objects.filter(id__in=promo_ids, status='active')
@@ -125,22 +129,26 @@ class CreateOrderView(APIView):
             # Final Save to Calculate Totals
             order.save()
 
-            print(f"Amount PaidSs: {data['payment']['amount_paid']}, Order Total: {order.total} {order_total}")
+            # if Decimal(data['payment']['amount_paid']) < order.total:
+            #     return Response({"error": "Amount paid is less than the total order amount."}, status=status.HTTP_400_BAD_REQUEST)
 
-            if Decimal(data['payment']['amount_paid']) < order.total:
-                return Response({"error": "Amount paid is less than the total order amount."}, status=status.HTTP_400_BAD_REQUEST)
+             # Fetch Payment Details from Stripe
+            payment_intent = stripe.PaymentIntent.retrieve(payment_id)
+            payment_method_details = stripe.PaymentMethod.retrieve(payment_intent.payment_method)
+            card_details = payment_method_details['card']
 
-            # Create Payment
-            stripe_status = data['payment']['payment_status']
-            payment_status = stripe_status_mapping.get(stripe_status, 'pending')
-
+            # Create Payment with card details and Stripe data
             payment = Payment.objects.create(
                 order=order,
-                payment_method=data['payment']['payment_method'],
-                payment_status=payment_status,
-                amount_paid=data['payment']['amount_paid'],
-                payment_gateway=data['payment']['payment_gateway'],
-                transaction_id=data['payment']['transaction_id']
+                payment_method=payment_intent.payment_method_types[0],  # e.g., "card"
+                payment_status=stripe_status_mapping.get(payment_intent.status, 'pending'),
+                amount_paid=Decimal(payment_intent.amount_received) / 100,  # Convert cents to dollars
+                payment_gateway='stripe',
+                transaction_id=payment_intent.id,
+                card_brand=card_details['brand'],
+                card_last4=card_details['last4'],
+                card_exp_month=card_details['exp_month'],
+                card_exp_year=card_details['exp_year'],
             )
 
             # Send WebSocket notification to the user
@@ -161,6 +169,7 @@ class CreateOrderView(APIView):
 
             return Response({
                 "order_id": order.id,
+                "order": OrderSerializer(order).data,
                 "payment_id": payment.id,
                 "message": "Order created successfully. Awaiting payment approval."
             }, status=status.HTTP_201_CREATED)
@@ -277,23 +286,65 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 @api_view(['POST'])
 def create_payment_intent(request):
     try:
-        # Get the amount in dollars from the request
+        user = request.user
+        if not user.is_authenticated:
+            return Response({'error': 'User must be authenticated to create a payment intent.'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Retrieve data from request
         amount_dollars = float(request.data.get('amount'))
+        amount_cents = int(amount_dollars * 100)  # Convert to cents
+        email = user.email
+        restaurant_id = request.data.get('restaurant_id')
 
-        # Convert the amount to cents (CAD currency)
-        amount_cents = int(amount_dollars * 100)
+        # Validate restaurant
+        restaurant = Restaurant.objects.filter(id=restaurant_id).first()
+        if not restaurant:
+            return Response({'error': 'Invalid restaurant ID.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Set the currency to CAD
-        currency = 'cad'
+        # Retrieve user profile details
+        profile = getattr(user, 'profile', None)
+        if not profile:
+            return Response({'error': 'User profile not found.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create a PaymentIntent in Stripe
+        # Get or create customer in Stripe
+        customers = stripe.Customer.list(email=email, limit=1)
+        if customers.data:
+            customer = customers.data[0]
+        else:
+            customer_data = {
+                'email': email,
+                'name': f"{user.first_name} {user.last_name}".strip(),
+                'phone': profile.phone,
+                'address': {
+                    'line1': profile.address,
+                    'city': profile.city,
+                    'state': profile.province,
+                    'country': 'CA',
+                },
+                'metadata': {'integration_check': 'accept_a_payment'},
+            }
+            customer = stripe.Customer.create(**customer_data)
+
+        # Create PaymentIntent with additional metadata
         payment_intent = stripe.PaymentIntent.create(
+            customer=customer.id,
+            setup_future_usage='off_session',
             amount=amount_cents,
-            currency=currency,
-            metadata={'integration_check': 'accept_a_payment'}
+            currency='cad',
+            metadata={
+                'integration_check': 'accept_a_payment',
+                'user_id': user.id,
+                'user_email': email,
+                'restaurant_id': restaurant_id,
+                'restaurant_name': restaurant.name,
+            }
         )
 
-        return Response({'clientSecret': payment_intent.client_secret}, status=status.HTTP_200_OK)
+        return Response({
+            'clientSecret': payment_intent.client_secret,
+            'customerId': customer.id
+        }, status=status.HTTP_200_OK)
+    
     except stripe.error.StripeError as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except (ValueError, TypeError) as e:

@@ -36,7 +36,7 @@ export function useOrderApiEndpoints() {
       return data.value
     }
 
-    const createPaymentIntent = async (amount, restaurantStripeAccountId) => {
+    const createPaymentIntent = async (amount, restaurantId, restaurantStripeAccountId) => {
       try {
         const { data, error } = await useFetch(`${baseUrl}payments/create-payment-intent/`, {
           method: 'POST',
@@ -44,6 +44,7 @@ export function useOrderApiEndpoints() {
           body: {
             amount: amount,
             restaurant_stripe_account_id: restaurantStripeAccountId,
+            restaurant_id: restaurantId,
           },
         })
     

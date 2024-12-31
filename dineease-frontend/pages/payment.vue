@@ -74,7 +74,7 @@ const handlePayment = async () => {
 
   try {
     // Step 1: Get the clientSecret from the backend
-    const { clientSecret } = await createPaymentIntent(orderData.amount);
+    const { clientSecret } = await createPaymentIntent(orderData.amount, 1);
 
     console.log('CLIENT SECRET:', clientSecret);
 
@@ -89,28 +89,12 @@ const handlePayment = async () => {
 
     console.log('PAYMENT INTENT:', paymentIntent);
 
-    // Extract payment details from the PaymentIntent
-    const paymentDetails = {
-      id: paymentIntent.id,
-      status: paymentIntent.status,
-      amount_received: paymentIntent.amount / 100, // Convert from cents to dollars
-      payment_method: paymentIntent.payment_method,
-      transaction_id: paymentIntent.id,
-      payment_gateway: 'stripe',
-    };
-
     alert('Payment successful!');
 
     // Step 3: Create the order with the payment details
     const result = await createOrder({
       ...orderData,
-      payment: {
-        payment_method: 'credit_card',
-        payment_status: paymentIntent.status,
-        amount_paid: paymentDetails.amount_received,
-        payment_gateway: paymentDetails.payment_gateway,
-        transaction_id: paymentDetails.transaction_id,
-      },
+      transaction_id: paymentIntent.id,
     });
 
     console.log('ORDER RESULT:', result);

@@ -24,6 +24,8 @@ class PaymentSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'order',
+            'card_brand',
+            'card_last4',
             'payment_method',
             'payment_status',
             'transaction_id',
@@ -78,6 +80,12 @@ class OrderPreviewSerializer(serializers.Serializer):
     promo_ids = serializers.ListField(
         child=serializers.IntegerField(), required=False, default=[]
     )
+    stripe_fee_rate = serializers.DecimalField(
+        max_digits=5, decimal_places=4, required=False, default=Decimal("0.029")
+    )
+    stripe_fixed_fee = serializers.DecimalField(
+        max_digits=5, decimal_places=2, required=False, default=Decimal("0.30")
+    )
 
     def validate(self, data):
         try:
@@ -96,54 +104,47 @@ class OrderPreviewSerializer(serializers.Serializer):
         return data
 
     def calculate_totals(self):
-        """Calculate discounts, tax, service fee, and final total."""
+        """Calculate discounts, tax, service fee, Stripe fees, and final total."""
         order_total = self.validated_data['order_total']
         restaurant = self.validated_data['restaurant']
         promos = self.validated_data['promos']
+        stripe_fee_rate = self.validated_data['stripe_fee_rate']
+        stripe_fixed_fee = self.validated_data['stripe_fixed_fee']
 
         tax = Tax.objects.filter(province=restaurant.province, is_active=True).first()
-        tax_rate = Decimal(tax.rate) if tax else Decimal(0) 
+        tax_rate = Decimal(tax.rate) if tax else Decimal(0)
 
-        # Debug: Initial values
-        print(f"Initial Order Total: {order_total}")
-        print(f"Tax Rate: {tax_rate}")
-
-        # Sort promos: percentage discounts first, then fixed discounts
-        sorted_promos = sorted(promos, key=lambda promo: promo.discount_type == 'fixed')
-
-        # Apply discounts
+        # Apply promos
         discount = Decimal(0)
         discounted_total = Decimal(order_total)
-        for promo in sorted_promos:
-            print(f"Applying Promo {promo.id}: {promo.discount_type} - {promo.discount}")
-
+        for promo in promos:
             if promo.discount_type == 'percentage':
                 discount_amount = discounted_total * (Decimal(promo.discount) / Decimal(100))
             elif promo.discount_type == 'fixed':
                 discount_amount = Decimal(promo.discount)
-
-            # Ensure discount does not exceed remaining total
             discount_amount = min(discount_amount, discounted_total)
-            print(f"Calculated Discount: {discount_amount}")
-
             discounted_total -= discount_amount
-            print(f"Remaining Total After Discount: {discounted_total}")
-
             discount += discount_amount
-            print(f"Total Discount So Far: {discount}")
 
-        # Calculate tax and fees
+        # Calculate tax and service fees
         tax_amount = discounted_total * (tax_rate / Decimal(100))
         service_fee = Decimal(tax.get_service_fee(discounted_total)) if tax else Decimal(0)
         service_fee_tax = service_fee * (tax_rate / Decimal(100))
+
+        # Calculate total paid by customer
         total = discounted_total + tax_amount + service_fee + service_fee_tax
 
-        # Debug: Tax and fee calculations
-        print(f"Discounted Total: {discounted_total}")
-        print(f"Tax Amount: {tax_amount}")
-        print(f"Service Fee: {service_fee}")
-        print(f"Service Fee Tax: {service_fee_tax}")
-        print(f"Final Total: {total}")
+        # Payment to restaurant before Stripe fee
+        restaurant_payment_before_fee = discounted_total - service_fee
+
+        # Calculate Stripe fees (paid by the restaurant)
+        stripe_fee = (restaurant_payment_before_fee * stripe_fee_rate) + stripe_fixed_fee
+
+        # Final restaurant payment after Stripe fee
+        restaurant_payment = restaurant_payment_before_fee - stripe_fee
+
+        # Platform revenue (total - restaurant payment - service fees)
+        platform_revenue = total - restaurant_payment_before_fee - stripe_fee
 
         return {
             "order_total": round(order_total, 2),
@@ -152,5 +153,9 @@ class OrderPreviewSerializer(serializers.Serializer):
             "tax_amount": round(tax_amount, 2),
             "service_fee": round(service_fee, 2),
             "service_fee_tax": round(service_fee_tax, 2),
-            "total": round(total, 2)
+            "stripe_fee": round(stripe_fee, 2),
+            "total": round(total, 2),
+            "restaurant_payment_before_fee": round(restaurant_payment_before_fee, 2),
+            "restaurant_payment": round(restaurant_payment, 2),
+            "platform_revenue": round(platform_revenue, 2),
         }
