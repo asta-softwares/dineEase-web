@@ -357,8 +357,8 @@ def get_payment_methods(request):
         if not user.is_authenticated:
             return Response({'error': 'User must be authenticated to retrieve payment methods.'}, status=status.HTTP_403_FORBIDDEN)
         
-        # Get the email of the authenticated user
-        email = user.email
+        # Get the email from request parameters, fallback to user's email
+        email = request.query_params.get('email', user.email)
 
         # Retrieve the user's Stripe customer object
         customers = stripe.Customer.list(email=email, limit=1)
