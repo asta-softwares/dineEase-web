@@ -31,7 +31,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['18.118.79.88', 'localhost', 'partners.dineease.ca']
 
-SITE_ID = 2
+SITE_ID = 1
 
 # Application definition
 
