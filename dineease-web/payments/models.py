@@ -115,6 +115,9 @@ class Order(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     verification_code = models.OneToOneField(VerificationCode, on_delete=models.CASCADE, null=True, blank=True, related_name='order')
 
+    class Meta:
+        ordering = ['-order_time']
+        
     def calculate_totals(self):
         """Calculate discounts, tax, service fee, and final total."""
         if not self.pk:  # Ensure the instance is saved

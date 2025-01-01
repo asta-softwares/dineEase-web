@@ -238,6 +238,7 @@ class UserProfile(models.Model):
         blank=True,
     )
     image = models.ImageField(upload_to='user_pictures/', blank=True)
+    notification_token = models.CharField(max_length=255, blank=True, null=True)
     
     def __str__(self):
         return self.user.username

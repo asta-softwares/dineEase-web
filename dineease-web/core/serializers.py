@@ -336,7 +336,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ['phone', 'image', 'address', 'city', 'province', 'coordinates']
+        fields = ['phone', 'image', 'address', 'city', 'province', 'coordinates', 'notification_token']
 
     def validate_coordinates(self, value):
         # Ensure coordinates are a valid list with two float values

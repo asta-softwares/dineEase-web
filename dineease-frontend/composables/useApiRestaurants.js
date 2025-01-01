@@ -73,6 +73,26 @@ export function useApiEndpoints() {
     }
   };
 
+  const createCustomerPortalSession = async () => {
+    try {
+      const { data, error } = await useFetch(`${baseUrl}create-customer-portal-session/`, {
+        method: 'POST',
+        headers
+      });
+  
+      if (error.value) {
+        console.error('Error creating customer portal session:', error.value);
+        return { success: false, error: error.value };
+      }
+  
+      window.location.href = data.value.url;
+      return { success: true };
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
   const deleteRestaurant = async (id) => {
     const { data, error } = await useFetch(`${baseUrl}restaurants/${id}/`, {
       method: 'DELETE',
@@ -213,5 +233,6 @@ export function useApiEndpoints() {
     fetchRestaurantsMini,
     fetchPromosByRestaurant,
     createStripeOnboardingLink,
+    createCustomerPortalSession,
   }
 }

@@ -42,11 +42,21 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Optionally filter orders by the authenticated user or other criteria.
+        Optionally filter orders by the authenticated user or other criteria,
+        and sort by recency.
         """
         user = self.request.user
-        if user.is_staff:
+
+        if user.profile.type_of_user in ['admin']:
+            # Admins can view all orders
             return Order.objects.all()
+
+        if user.profile.type_of_user == 'restaurant_owner':
+            # Get orders for restaurants owned by the user
+            # return Order.objects.filter(restaurant__owner=user)
+            return Order.objects.all()
+
+        # Regular users can only view their own orders
         return Order.objects.filter(customer=user)
 
 class PaymentViewSet(viewsets.ModelViewSet):
@@ -336,9 +346,16 @@ def create_payment_intent(request):
             }
         )
 
+        # Generate ephemeral key
+        ephemeral_key = stripe.EphemeralKey.create(
+            customer=customer.id,
+            stripe_version='2022-11-15',
+        )
+
         return Response({
             'clientSecret': payment_intent.client_secret,
-            'customerId': customer.id
+            'customerId': customer.id,
+            'ephemeralKey': ephemeral_key.secret,
         }, status=status.HTTP_200_OK)
     
     except stripe.error.StripeError as e:
@@ -391,6 +408,7 @@ def get_payment_methods(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     
 @api_view(['POST'])
 def refund_payment(request):
