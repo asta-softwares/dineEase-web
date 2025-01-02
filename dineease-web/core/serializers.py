@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from .models import Restaurant, Promo, Menu, UserProfile, RestaurantImage, AddonCategory, AddonOption, Category, VerificationCode
 from django.core.exceptions import ValidationError
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.gis.geos import Point
 from datetime import datetime
 from django.utils.timezone import now, localtime, activate
@@ -322,12 +323,14 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         if not user:
             user = User.objects.filter(username=username).first()
 
+        # Validate user and password
         if user and user.check_password(password):
             # Set the 'username' in attrs for TokenObtainPairSerializer
             attrs['username'] = user.username
             return super().validate(attrs)
 
-        raise serializers.ValidationError("Incorrect email, phone number, or username, or password.")
+        # Raise AuthenticationFailed for invalid credentials
+        raise AuthenticationFailed("Incorrect email, phone number, or username, or password.")
 class UserProfileSerializer(serializers.ModelSerializer):
     coordinates = serializers.ListField(
         child=serializers.FloatField(),

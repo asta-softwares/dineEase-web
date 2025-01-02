@@ -398,9 +398,9 @@ class LoginView(APIView):
         serializer = self.serializer_class(data=request.data)
         try:
             serializer.is_valid(raise_exception=True)
-        except serializer.ValidationError as e:
-            # If validation fails, return a 401 status code for invalid credentials
-            return Response({"error": e.detail[0]}, status=status.HTTP_401_UNAUTHORIZED)
+        except ValidationError as e:
+            # Return 401 Unauthorized for invalid credentials
+            return Response({"error": e.detail}, status=status.HTTP_401_UNAUTHORIZED)
 
         user = serializer.validated_data['user']
 

@@ -40,6 +40,7 @@ class OrderSerializer(serializers.ModelSerializer):
     customer = UserSerializer(read_only=True)
     payment = PaymentSerializer(read_only=True)
     promos = PromoMiniSerializer(many=True, read_only=True)
+    verification_code = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -60,6 +61,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'status',
             'order_time',
             'payment',
+            'verification_code',
         ]
         read_only_fields = [
             'order_total',
