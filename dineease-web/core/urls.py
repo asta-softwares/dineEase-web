@@ -19,17 +19,19 @@ from .views import (
     ResendEmailView,
     GoogleAuthView,
     SearchView,
+    CategoryViewSet
 )
 from rest_framework_simplejwt.views import (
     TokenRefreshView,
     TokenVerifyView,
 )
-from .stripe import create_onboarding_link
+from .stripe import create_onboarding_link, create_customer_portal_session, create_express_dashboard_link
 
 router = DefaultRouter()
 router.register(r'restaurants', RestaurantViewSet)
 router.register(r'promos', PromoViewSet)
 router.register(r'menus', MenuViewSet)
+router.register(r'categories', CategoryViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -49,6 +51,8 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('token/verify/', TokenVerifyView.as_view(), name='token_verify'),
     path('create-onboarding-link/<int:restaurant_id>/', create_onboarding_link, name='create-onboarding-link'),
+    path('create-customer-portal-session/', create_customer_portal_session, name='create-customer-portal-session'),
+    path('create-dashboard-link/<int:restaurant_id>/', create_express_dashboard_link, name='create_dashboard_link'),
     path('auth/google/', GoogleAuthView.as_view(), name='google-auth'),
     path('search/', SearchView.as_view(), name='search'),
 ]

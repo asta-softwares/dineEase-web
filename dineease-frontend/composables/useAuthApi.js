@@ -133,6 +133,9 @@ export function useAuthApi() {
         headers: {
           Authorization: `Bearer ${authToken.value}`,
         },
+        body: JSON.stringify({
+          refresh: refreshToken.value,
+        }),
       })
     } catch (error) {
       console.error("Error logging out on server:", error)

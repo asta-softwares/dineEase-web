@@ -31,7 +31,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['18.118.79.88', 'localhost', 'partners.dineease.ca']
 
-SITE_ID = 1
+SITE_ID = 2
 
 # Application definition
 
@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'core',
     'payments',
     'rest_auth',
@@ -55,6 +56,7 @@ INSTALLED_APPS = [
     'mapwidgets',
     'django.contrib.gis',
     'channels',
+    'django_filters',
 ]
 
 REST_FRAMEWORK = {
@@ -64,6 +66,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend']
 }
 
 SIMPLE_JWT = {
@@ -72,6 +75,7 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
+    'BLACKLIST_AFTER_ROTATION': True,
 }
 
 CHANNEL_LAYERS = {

@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import OrderViewSet, PaymentViewSet, CreateOrderView, UpdatePaymentStatusView, UpdateOrderStatusView, OrderPreviewAPI
 from .webhooks import stripe_webhook
-from .views import create_payment_intent, refund_payment, get_payment_methods
+from .views import create_payment_intent, refund_payment, get_payment_methods, create_setup_intent
 
 router = DefaultRouter()
 router.register(r'orders', OrderViewSet)
@@ -17,6 +17,7 @@ urlpatterns = [
     path('stripe/webhook/', stripe_webhook, name='stripe_webhook'),
 
     path('create-payment-intent/', create_payment_intent, name='create-payment-intent'),
+    path('create-setup-intent/', create_setup_intent, name='create-setup-intent'),
     path('payment-methods/', get_payment_methods, name='get_payment_methods'),
     path('refund-payment/', refund_payment, name='refund-payment'),
 ]

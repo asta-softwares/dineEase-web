@@ -1,10 +1,10 @@
 <template>
-    <div class="p-6 max-w-md mx-auto">
-      <h2 class="text-2xl font-bold mb-4">Stripe Onboarding Successful!</h2>
+    <div class="flex flex-col items-center justify-center p-6 gap-4 max-w-md mx-auto">
+      <h2 class="text-2xl font-bold">Stripe Onboarding Successful!</h2>
       <p v-if="isLoading">Loading...</p>
       <p v-if="errorMessage" class="text-red-500">{{ errorMessage }}</p>
       <p v-if="successMessage" class="text-green-500">{{ successMessage }}</p>
-      <Button @click="goToRestaurantForm">Back to Restaurant Form</Button>
+      <Button @click="goToRestaurantForm">Back to Restaurant Page</Button>
     </div>
   </template>
   
@@ -44,7 +44,7 @@
   });
   
   const goToRestaurantForm = () => {
-    router.push(`/restaurants/edit/${restaurantId}`);
+    router.push(`/restaurants/`);
   };
   </script>
   

@@ -257,6 +257,7 @@ class UpdateOrderStatusView(APIView):
     def post(self, request, order_id):
         try:
             order = Order.objects.get(id=order_id)
+            restaurant_name = order.restaurant.name if order.restaurant else "Unknown Restaurant"
 
             if order.status == "pending" and hasattr(order, "payment"):
                 if order.payment.payment_status != "completed":
@@ -268,10 +269,12 @@ class UpdateOrderStatusView(APIView):
 
             if action == "accept":
                 order.status = "confirmed"
-                message = "Your order has been accepted!"
+                title = f"{restaurant_name} Order Accepted"
+                message = "Your order has been accepted and is now being prepared."
             elif action == "reject":
                 order.status = "cancelled"
-                message = "Your order has been rejected."
+                title = f"{restaurant_name} Order Rejected"
+                message = "Unfortunately, your order has been rejected. Please contact the restaurant for more details."
             elif action == "complete":
                 # Require and validate verification code
                 verification_code = request.data.get("verification_code")
@@ -283,10 +286,15 @@ class UpdateOrderStatusView(APIView):
 
                 # Update order status
                 order.status = "completed"
-                message = "Your order has been completed."
+                title = f"{restaurant_name} Order Completed"
+                message = "Your order has been completed successfully. Thank you for choosing our service!"
                 order.save()
 
                 order.verification_code.delete()
+            else:
+                order.status = "pending"
+                title = f"{restaurant_name} Order Update"
+                message = "There is an update on your order. Please check for more details."
 
             # Save the order for "accept" and "reject" actions
             if action in ["accept", "reject"]:
@@ -308,11 +316,12 @@ class UpdateOrderStatusView(APIView):
                 notification_token = order.customer.profile.notification_token
                 payload = {
                     "to": notification_token,
-                    "title": "Order Status Update",
+                    "title": title,
                     "body": message,
                     "data": {
                         "order_id": order.id,
                         "status": order.status,
+                        "restaurant_id": order.restaurant.id,
                     }
                 }
                 headers = {
@@ -325,7 +334,7 @@ class UpdateOrderStatusView(APIView):
                 if response.status_code != 200:
                     print(f"Expo notification failed: {response.text}")
 
-            return Response({"message": f"Order {action}ed successfully"}, status=status.HTTP_200_OK)
+            return Response({"message": title}, status=status.HTTP_200_OK)
 
         except Order.DoesNotExist:
             return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -451,6 +460,48 @@ def get_payment_methods(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@api_view(['POST'])
+def create_setup_intent(request):
+    """
+    Create a Stripe Setup Intent and ensure customer email exists in Stripe.
+    """
+    try:
+        user = request.user
+        if not user.is_authenticated:
+            return Response({"error": "User must be authenticated to save a payment method."}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Retrieve or create Stripe customer
+        customers = stripe.Customer.list(email=user.email, limit=1)
+        if customers.data:
+            customer = customers.data[0]
+            # Ensure customer email exists; if not, update it
+            if not customer.get("email"):
+                stripe.Customer.modify(
+                    customer.id,
+                    email=user.email,
+                    name=f"{user.first_name} {user.last_name}"
+                )
+        else:
+            # Create a new customer if not found
+            customer = stripe.Customer.create(
+                email=user.email,
+                name=f"{user.first_name} {user.last_name}"
+            )
+
+        # Create Setup Intent
+        setup_intent = stripe.SetupIntent.create(
+            customer=customer.id,
+            payment_method_types=["card"],
+            metadata={"user_id": user.id}
+        )
+
+        return Response({"clientSecret": setup_intent.client_secret}, status=status.HTTP_200_OK)
+
+    except stripe.error.StripeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     
 @api_view(['POST'])

@@ -17,7 +17,22 @@ def create_onboarding_link(request, restaurant_id):
 
         # Create a Stripe Standard connected account if not already created
         if not restaurant.stripe_account_id:
-            account = stripe.Account.create(type='standard')
+            account = stripe.Account.create(
+                type="express",
+                country="CA",
+                email=restaurant.email if restaurant.email else f"no-reply-{restaurant_id}@dineease.com",
+                capabilities={
+                    "transfers": {"requested": True},  # Enables payouts
+                    "card_payments": {"requested": True},  # Enables accepting card payments
+                },
+                business_type="company",  # Specify business type, adjust if the restaurant is an individual
+                metadata={"restaurant_id": restaurant_id},  # Attach the restaurant ID for tracking
+                settings={
+                    "payouts": {
+                        "schedule": {"interval": "weekly", "weekly_anchor": "monday"}  # Weekly payouts on Monday
+                    }
+                }
+            )
             restaurant.stripe_account_id = account.id
             restaurant.save()
         else:
@@ -38,6 +53,47 @@ def create_onboarding_link(request, restaurant_id):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
+def create_express_dashboard_link(request, restaurant_id):
+    """
+    Generate a Stripe Express Dashboard link for a connected account.
+    If onboarding is incomplete, generate an onboarding link instead.
+    """
+    try:
+        # Fetch the restaurant from the database
+        restaurant = get_object_or_404(Restaurant, id=restaurant_id)
+
+        # Ensure the restaurant has a Stripe account
+        if not restaurant.stripe_account_id:
+            return JsonResponse({'error': 'Restaurant does not have a Stripe account.'}, status=400)
+
+        # Retrieve the account details
+        account = stripe.Account.retrieve(restaurant.stripe_account_id)
+
+        # Check if the account has completed onboarding
+        if not account.details_submitted:
+            # Generate an onboarding link
+            account_link = stripe.AccountLink.create(
+                account=restaurant.stripe_account_id,
+                refresh_url=request.build_absolute_uri('/reauth/'),
+                return_url=request.build_absolute_uri(f'/stripe-success?restaurant_id={restaurant_id}'),
+                type='account_onboarding'
+            )
+            return JsonResponse({'error': 'Onboarding incomplete', 'onboarding_url': account_link.url}, status=400)
+
+        # If onboarding is complete, create the dashboard login link
+        login_link = stripe.Account.create_login_link(
+            restaurant.stripe_account_id
+        )
+
+        return JsonResponse({'dashboard_url': login_link.url}, status=200)
+
+    except stripe.error.StripeError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Restaurant.DoesNotExist:
+        return JsonResponse({'error': 'Restaurant not found.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+    
 @api_view(['POST'])
 def create_customer_portal_session(request):
     """

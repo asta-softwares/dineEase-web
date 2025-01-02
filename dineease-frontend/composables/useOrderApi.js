@@ -84,6 +84,24 @@ export function useOrderApiEndpoints() {
       }
     };
 
+    const createSetupIntent = async () => {
+      try {
+        const { data, error } = await useFetch(`${baseUrl}payments/create-setup-intent/`, {
+          method: 'POST',
+          headers,
+        });
+    
+        if (error.value) {
+          throw new Error(error.value.message || 'Failed to create setup intent');
+        }
+    
+        return data.value;
+      } catch (err) {
+        console.error('Error creating setup intent:', err);
+        throw err;
+      }
+    };
+
     const rejectOrder = async (orderId, paymentIntentId) => {
       try {
         const response = await fetch('/api/refund-payment', {
@@ -131,7 +149,8 @@ export function useOrderApiEndpoints() {
       updatePaymentStatus,
       createPaymentIntent,
       rejectOrder,
-      getPaymentMethods
+      getPaymentMethods,
+      createSetupIntent,
     }
 }
   

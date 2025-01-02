@@ -93,6 +93,30 @@ export function useApiEndpoints() {
     }
   };
 
+  const createDashboardLink = async (restaurantId) => {
+    try {
+      const response = await fetch(`${baseUrl}create-dashboard-link/${restaurantId}/`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+  
+      const result = await response.json();
+      console.log("API Response:", result);
+  
+      if (!response.ok) {
+        if (result.onboarding_url) {
+          return { success: false, onboardingUrl: result.onboarding_url };
+        }
+        throw new Error(result.error || 'Failed to create dashboard link.');
+      }
+  
+      return { success: true, dashboardUrl: result.dashboard_url };
+    } catch (err) {
+      console.error('Error creating dashboard link:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
   const deleteRestaurant = async (id) => {
     const { data, error } = await useFetch(`${baseUrl}restaurants/${id}/`, {
       method: 'DELETE',
@@ -234,5 +258,6 @@ export function useApiEndpoints() {
     fetchPromosByRestaurant,
     createStripeOnboardingLink,
     createCustomerPortalSession,
+    createDashboardLink,
   }
 }
