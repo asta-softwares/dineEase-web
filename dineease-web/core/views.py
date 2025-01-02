@@ -6,6 +6,8 @@ from rest_framework import (
 )
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import viewsets, filters
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.authtoken.models import Token
@@ -297,6 +299,19 @@ class MenuCategoryList(generics.ListAPIView):
     serializer_class = CategorySerializer
     permission_classes = [AllowAny]
 
+class CategoryViewSet(viewsets.ModelViewSet):
+    """
+    A viewset for viewing and editing Category instances.
+    """
+    queryset = Category.objects.all().order_by('priority_index', 'name')
+    serializer_class = CategorySerializer
+    permission_classes = [AllowAny]
+
+    # Add filter backends for search and filtering
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['category_type']  # Enable filtering by category_type
+    search_fields = ['name']  # Enable searching by name
+
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
@@ -381,7 +396,12 @@ class LoginView(APIView):
 
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except serializer.ValidationError as e:
+            # If validation fails, return a 401 status code for invalid credentials
+            return Response({"error": e.detail[0]}, status=status.HTTP_401_UNAUTHORIZED)
+
         user = serializer.validated_data['user']
 
         # Create JWT tokens
@@ -402,12 +422,18 @@ class LogoutView(APIView):
 
     def post(self, request):
         try:
-            # Delete the user's token to log them out
-            token = Token.objects.get(user=request.user)
-            token.delete()
+            # Extract the refresh token from the request
+            refresh_token = request.data.get("refresh")
+            if not refresh_token:
+                return Response({"detail": "Refresh token is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Blacklist the refresh token
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+
             return Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)
-        except Token.DoesNotExist:
-            return Response({"detail": "Token not found."}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
