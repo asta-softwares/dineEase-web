@@ -46,6 +46,7 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'customer',
+            'order_type',
             'restaurant_details',
             'items',
             'promos',  # Include attached promos
