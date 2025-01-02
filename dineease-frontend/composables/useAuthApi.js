@@ -113,7 +113,6 @@ export function useAuthApi() {
   };
 
   const redirectToLogin = () => {
-    console.log("GO HERE")
     authToken.value = null;
     refreshToken.value = null;
     activeRestaurantIdCookie.value = null;

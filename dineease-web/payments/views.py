@@ -1,3 +1,5 @@
+import requests
+import stripe
 from rest_framework import viewsets, status
 from .models import Order, OrderItem, Payment, Promo, PromoUsage, Menu, Restaurant
 from .serializers import OrderSerializer, PaymentSerializer, OrderPreviewSerializer
@@ -10,7 +12,6 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from rest_framework.pagination import PageNumberPagination
 from decimal import Decimal
-import stripe
 from django.conf import settings
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -43,21 +44,26 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Optionally filter orders by the authenticated user or other criteria,
-        and sort by recency.
+        and allow filtering by multiple statuses.
         """
         user = self.request.user
+        queryset = super().get_queryset()
 
-        if user.profile.type_of_user in ['admin']:
-            # Admins can view all orders
-            return Order.objects.all()
+        # Filter by user type
+        if user.profile.type_of_user == 'admin':
+            queryset = Order.objects.all()
+        elif user.profile.type_of_user == 'restaurant_owner':
+            queryset = Order.objects.filter(restaurant__owner=user)
+        else:
+            queryset = Order.objects.filter(customer=user)
 
-        if user.profile.type_of_user == 'restaurant_owner':
-            # Get orders for restaurants owned by the user
-            # return Order.objects.filter(restaurant__owner=user)
-            return Order.objects.all()
+        # Filter by status
+        statuses = self.request.query_params.get('status')  # Retrieve 'status' query parameter
+        if statuses:
+            status_list = statuses.split(',')  # Split comma-separated values into a list
+            queryset = queryset.filter(status__in=status_list)
 
-        # Regular users can only view their own orders
-        return Order.objects.filter(customer=user)
+        return queryset
 
 class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all().select_related('order')
@@ -181,6 +187,7 @@ class CreateOrderView(APIView):
             return Response({
                 "order_id": order.id,
                 "order": OrderSerializer(order).data,
+                "verification_code": order.verification_code.code,
                 "payment_id": payment.id,
                 "message": "Order created successfully. Awaiting payment approval."
             }, status=status.HTTP_201_CREATED)
@@ -266,10 +273,24 @@ class UpdateOrderStatusView(APIView):
                 order.status = "cancelled"
                 message = "Your order has been rejected."
             elif action == "complete":
+                # Require and validate verification code
+                verification_code = request.data.get("verification_code")
+                if not verification_code:
+                    return Response({"error": "Verification code is required to complete the order."}, status=status.HTTP_400_BAD_REQUEST)
+
+                if not order.verification_code or order.verification_code.code != verification_code:
+                    return Response({"error": "Invalid verification code."}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Update order status
                 order.status = "completed"
                 message = "Your order has been completed."
+                order.save()
 
-            order.save()
+                order.verification_code.delete()
+
+            # Save the order for "accept" and "reject" actions
+            if action in ["accept", "reject"]:
+                order.save()
 
             # Send notification to the user
             channel_layer = get_channel_layer()
@@ -281,6 +302,28 @@ class UpdateOrderStatusView(APIView):
                     'status': order.status
                 }
             )
+
+            # Push notification using Expo Push Notification API
+            if hasattr(order.customer, 'profile') and order.customer.profile.notification_token:
+                notification_token = order.customer.profile.notification_token
+                payload = {
+                    "to": notification_token,
+                    "title": "Order Status Update",
+                    "body": message,
+                    "data": {
+                        "order_id": order.id,
+                        "status": order.status,
+                    }
+                }
+                headers = {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                }
+                response = requests.post("https://exp.host/--/api/v2/push/send", json=payload, headers=headers)
+
+                # Log response for debugging
+                if response.status_code != 200:
+                    print(f"Expo notification failed: {response.text}")
 
             return Response({"message": f"Order {action}ed successfully"}, status=status.HTTP_200_OK)
 

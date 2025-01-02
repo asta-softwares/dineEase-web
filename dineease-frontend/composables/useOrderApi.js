@@ -7,14 +7,19 @@ export function useOrderApiEndpoints() {
       Authorization: `Bearer ${authToken.value}`,
     }
   
-    const fetchOrders = async ({ page = 1, page_size = 30 } = {}) => {
+    const fetchOrders = async ({ page = 1, page_size = 30, statuses = [] } = {}) => {
+      const statusQuery = Array.isArray(statuses) ? statuses.join(',') : statuses;
+    
+      const query = {
+        page,
+        page_size,
+        ...(statusQuery && { status: statusQuery }),
+      };
+    
       const { data, error } = await useFetch(`${baseUrl}payments/orders/`, {
         method: 'GET',
         headers,
-        query: {
-          page,
-          page_size,
-        },
+        query,
       });
     
       if (error.value) throw error.value;

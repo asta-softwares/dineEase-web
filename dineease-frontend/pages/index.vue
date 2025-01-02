@@ -114,7 +114,7 @@ onUnmounted(() => {
 async function loadOrders() {
   try {
     isLoading.value = true;
-    const { results, count } = await fetchOrders({ page: currentPage.value, page_size: pageSize });
+    const { results, count } = await fetchOrders({ page: currentPage.value, page_size: pageSize, statuses: ['pending', 'confirmed'] });
     appendNewOrders(results);
     console.log(results)
     totalPages.value = Math.ceil(count / pageSize);
@@ -182,12 +182,25 @@ async function acceptOrder(orderId) {
 // Complete Order
 async function completeOrder(orderId) {
   try {
-    await updateOrderStatus(orderId, { action: 'complete' });
+    // Prompt user for verification code
+    const verificationCode = prompt("Please enter the verification code for this order:");
+    if (!verificationCode) {
+      alert("Verification code is required to complete the order.");
+      return;
+    }
+
+    // Send API request with verification code
+    await updateOrderStatus(orderId, { action: 'complete', verification_code: verificationCode });
+
+    // Update order status locally
     const order = orders.value.find((o) => o.id === orderId);
     if (order) order.status = 'completed';
+
+    alert(`Order ${orderId} has been successfully completed.`);
     console.log(`Order ${orderId} has been completed.`);
   } catch (error) {
     console.error('Failed to complete order:', error);
+    alert("Failed to complete the order. Please ensure the verification code is correct.");
   }
 }
 

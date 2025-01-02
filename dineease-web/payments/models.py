@@ -165,21 +165,17 @@ class Order(models.Model):
         self.total = discounted_total + self.tax_amount + self.service_fee + self.service_fee_tax
 
     def save(self, *args, **kwargs):
-        """Override save method to calculate totals before saving."""
-        # Check if the instance is new (no primary key)
-        if not self.pk:
-            # Save to generate a primary key
+        """Override save to calculate totals only on creation."""
+        if not self.pk:  # Only calculate totals on creation
+            super().save(*args, **kwargs)  # Save to generate a primary key
+            self.calculate_totals()  # Calculate totals after instance creation
+
+            super().save(update_fields=[
+                'discount', 'tax_rate', 'tax_amount',
+                'service_fee', 'service_fee_tax', 'total'
+            ])
+        else:
             super().save(*args, **kwargs)
-
-        # Calculate totals
-        self.calculate_totals()
-
-        # Save the instance again to persist calculated fields
-        super().save(update_fields=[
-            'discount', 'tax_rate', 'tax_amount',
-            'service_fee', 'service_fee_tax', 'total'
-        ])
-
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
