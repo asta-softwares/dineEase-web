@@ -20,7 +20,7 @@ class RestaurantImageSerializer(serializers.ModelSerializer):
 class RestaurantMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = Restaurant
-        fields = ['id', 'name', 'image']
+        fields = ['id', 'name', 'image', 'location']
         
 class PromoSerializer(serializers.ModelSerializer):
     restaurant = serializers.PrimaryKeyRelatedField(queryset=Restaurant.objects.all(), write_only=True)
@@ -255,7 +255,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             first_name=validated_data['first_name'],
             last_name=validated_data['last_name'],
         )
-        user.is_active = True  # Set is_active to False
+        user.is_active = False  # Set is_active to False
         user.save()
 
         # Create UserProfile with phone and type_of_user
@@ -322,6 +322,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         # Check if the username matches the username field
         if not user:
             user = User.objects.filter(username=username).first()
+
+        # Check if user is active
+        if user and not user.is_active:
+            raise AuthenticationFailed("User account is not verified. Please verify your email before logging in.")
 
         # Validate user and password
         if user and user.check_password(password):

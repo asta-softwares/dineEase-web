@@ -14,6 +14,8 @@ from rest_framework.pagination import PageNumberPagination
 from decimal import Decimal
 from django.conf import settings
 stripe.api_key = settings.STRIPE_SECRET_KEY
+from .filters import OrderFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 stripe_status_mapping = {
     'requires_payment_method': 'pending',
@@ -40,11 +42,12 @@ class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     permission_classes = [IsAuthenticated]
     pagination_class = OrderPagination
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = OrderFilter
 
     def get_queryset(self):
         """
-        Optionally filter orders by the authenticated user or other criteria,
-        and allow filtering by multiple statuses.
+        Optionally filter orders by the authenticated user.
         """
         user = self.request.user
         queryset = super().get_queryset()
@@ -56,12 +59,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             queryset = Order.objects.filter(restaurant__owner=user)
         else:
             queryset = Order.objects.filter(customer=user)
-
-        # Filter by status
-        statuses = self.request.query_params.get('status')  # Retrieve 'status' query parameter
-        if statuses:
-            status_list = statuses.split(',')  # Split comma-separated values into a list
-            queryset = queryset.filter(status__in=status_list)
 
         return queryset
 
