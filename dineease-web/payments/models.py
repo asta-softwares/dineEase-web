@@ -113,7 +113,7 @@ class Order(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    verification_code = models.OneToOneField(VerificationCode, on_delete=models.CASCADE, null=True, blank=True, related_name='order')
+    verification_code = models.OneToOneField(VerificationCode, on_delete=models.SET_NULL, null=True, blank=True, related_name='order')
 
     class Meta:
         ordering = ['-order_time']

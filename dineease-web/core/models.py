@@ -167,6 +167,8 @@ class Menu(models.Model):
     STATUSES = (
         ('active', 'Active'),
         ('inactive', 'Inactive'),
+        ('archived', 'Archived'),
+        ('unavailable', 'Unavailable'),
     )
 
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='menus')
