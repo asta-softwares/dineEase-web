@@ -27,6 +27,13 @@ class RestaurantMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = Restaurant
         fields = ['id', 'name', 'image', 'location']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if 'image' in representation:
+            representation['image'] = enforce_https_in_production(representation['image'])
+        return representation
+    
         
 class PromoSerializer(serializers.ModelSerializer):
     restaurant = serializers.PrimaryKeyRelatedField(queryset=Restaurant.objects.all(), write_only=True)
@@ -73,7 +80,6 @@ class MenuSerializer(serializers.ModelSerializer):
     addon_categories = AddonCategorySerializer(many=True, read_only=True)
     images = RestaurantImageSerializer(many=True, read_only=True)
     discounted_cost = serializers.SerializerMethodField()
-
     restaurant = serializers.PrimaryKeyRelatedField(queryset=Restaurant.objects.all(), write_only=True)
     restaurant_details = RestaurantMiniSerializer(source='restaurant', read_only=True)
     promos = serializers.PrimaryKeyRelatedField(queryset=Promo.objects.all(), many=True, required=False)
