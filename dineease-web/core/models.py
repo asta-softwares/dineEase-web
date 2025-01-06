@@ -260,8 +260,8 @@ class ExpiringToken(Token):
         return token
     
 class VerificationCode(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='verification_code')
-    code = models.CharField(max_length=6)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='verification_codes')
+    code = models.CharField(max_length=6, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def generate_code(self):

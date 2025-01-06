@@ -50,6 +50,7 @@ from .serializers import (
     MenuSearchSerializer,
 )
 from .utils import send_confirmation_email
+from collections import defaultdict
 
 from google.oauth2.id_token import verify_oauth2_token
 from google.auth.transport.requests import Request
@@ -279,11 +280,39 @@ class MenuViewSet(viewsets.ModelViewSet):
         return super().get_queryset()
 
 
-class FeaturedRestaurantListView(generics.ListAPIView):
-    queryset = Restaurant.objects.all().order_by('priority_index').prefetch_related('images')
-    serializer_class = RestaurantSerializer
+class FeaturedRestaurantListView(APIView):
     permission_classes = [AllowAny]
 
+    def get(self, request, *args, **kwargs):
+        # Determine the grouping field based on the query parameter
+        group_by = request.query_params.get('group_by', 'city')  # Default to 'city'
+
+        if group_by not in ['city', 'province']:
+            return Response({"error": "Invalid group_by parameter. Use 'city' or 'province'."}, status=400)
+
+        # Fetch restaurants with non-null priority_index and order by priority_index
+        queryset = (
+            Restaurant.objects.filter(priority_index__isnull=False)
+            .order_by('priority_index')
+            .prefetch_related('images')
+        )
+
+        # Serialize data
+        serializer = RestaurantSerializer(queryset, many=True)
+
+        # Group restaurants dynamically by the specified field
+        grouped_restaurants = defaultdict(list)
+        for restaurant in serializer.data:
+            # Use 'Unknown' if the group_by field is empty or null
+            group_value = restaurant.get(group_by, 'Unknown') or 'Unknown'
+            grouped_restaurants[group_value].append(restaurant)
+
+        # Convert to desired output format
+        grouped_data = [{'group': group_value, 'restaurants': restaurants} for group_value, restaurants in grouped_restaurants.items()]
+
+        return Response(grouped_data)
+
+        return Response(grouped_data)
 class FeaturedMenuListView(generics.ListAPIView):
     queryset = Menu.objects.all().order_by('priority_index').prefetch_related('images')
     serializer_class = MenuSerializer
