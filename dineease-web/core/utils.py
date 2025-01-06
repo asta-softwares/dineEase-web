@@ -63,3 +63,19 @@ def parse_coordinates(coordinates):
         return Point(lng, lat)
     except (ValueError, TypeError, json.JSONDecodeError):
         raise ValueError("Invalid coordinates format. Expected 'lng,lat' or [lng, lat].")
+
+
+def enforce_https_in_production(url):
+    """
+    Convert http to https for URLs when in production mode.
+    """
+    try:
+        if settings.DEBUG is False:
+            if not url:
+                return url
+
+            if url.startswith('http://'):
+                return url.replace('http://', 'https://')
+    except Exception as e:
+        raise e
+    return url

@@ -8,7 +8,7 @@ from django.contrib.gis.geos import Point
 from datetime import datetime
 from django.utils.timezone import now, localtime, activate
 import json
-from .utils import parse_coordinates
+from .utils import parse_coordinates, enforce_https_in_production
 
 class RestaurantImageSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(use_url=True)
@@ -16,6 +16,12 @@ class RestaurantImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = RestaurantImage
         fields = ['id', 'image', 'caption']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if 'image' in representation:
+            representation['image'] = enforce_https_in_production(representation['image'])
+        return representation
 
 class RestaurantMiniSerializer(serializers.ModelSerializer):
     class Meta:
@@ -111,6 +117,12 @@ class MenuSerializer(serializers.ModelSerializer):
         if promos_data is not None:
             instance.promos.set(promos_data)
         return instance
+    
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if 'image' in representation:
+            representation['image'] = enforce_https_in_production(representation['image'])
+        return representation
 
 class RestaurantSerializer(serializers.ModelSerializer):
     promos = PromoSerializer(many=True, read_only=True)
@@ -212,6 +224,12 @@ class RestaurantSerializer(serializers.ModelSerializer):
         except ValueError as e:
             raise serializers.ValidationError({"coordinates": str(e)})
         return super().update(instance, validated_data)
+    
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if 'image' in representation:
+            representation['image'] = enforce_https_in_production(representation['image'])
+        return representation
 
 class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=False, allow_blank=True)

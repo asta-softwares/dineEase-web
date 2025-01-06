@@ -27,7 +27,7 @@ ASGI_APPLICATION = 'dineease_backend.asgi.application'
 STRIPE_SECRET_KEY = "sk_test_51QMpBEAECjFQcoAi6KVOnSrIU5YACJUObWmvoXuWBwXAhfvrxqA0Jo1aqBINPWxrl9NV0KDTu8mUpjyuPPIXzSZm00xPGMb3Ys"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['18.118.79.88', 'localhost', 'partners.dineease.ca']
 
