@@ -5,10 +5,11 @@ from .models import Order
 
 class OrderFilter(django_filters.FilterSet):
     date = django_filters.CharFilter(method='filter_by_date')
+    status = django_filters.CharFilter(method='filter_by_status')
 
     class Meta:
         model = Order
-        fields = ['date']
+        fields = ['date', 'status']
 
     def filter_by_date(self, queryset, name, value):
         """
@@ -36,4 +37,17 @@ class OrderFilter(django_filters.FilterSet):
         elif ',' in value:  # Custom range (e.g., 'YYYY-MM-DD,YYYY-MM-DD')
             start_date, end_date = value.split(',')
             return queryset.filter(created_at__date__range=[start_date, end_date])
+        return queryset
+
+    def filter_by_status(self, queryset, name, value):
+        """
+        Filter orders based on status.
+        Allowed values:
+        - 'pending,confirmed'
+        - Any combination of statuses separated by a comma.
+        - Blank (returns all statuses).
+        """
+        if value:
+            statuses = value.split(',')
+            return queryset.filter(status__in=statuses)
         return queryset

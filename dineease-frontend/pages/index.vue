@@ -114,7 +114,7 @@ onUnmounted(() => {
 async function loadOrders() {
   try {
     isLoading.value = true;
-    const { results, count } = await fetchOrders({ page: currentPage.value, page_size: pageSize, statuses: ['pending', 'confirmed'], date: 'hour'});
+    const { results, count } = await fetchOrders({ page: currentPage.value, page_size: pageSize, statuses: ['pending', 'confirmed'], date: 'today'});
     appendNewOrders(results);
     console.log(results)
     totalPages.value = Math.ceil(count / pageSize);
