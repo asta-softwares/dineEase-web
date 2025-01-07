@@ -273,8 +273,8 @@ class FeaturedRestaurantListView(APIView):
             .prefetch_related('images')
         )
 
-        # Serialize data
-        serializer = RestaurantSerializer(queryset, many=True)
+        # Serialize data, passing the request context
+        serializer = RestaurantSerializer(queryset, many=True, context={'request': request})
 
         # Group restaurants dynamically by the specified field
         grouped_restaurants = defaultdict(list)
@@ -288,7 +288,6 @@ class FeaturedRestaurantListView(APIView):
 
         return Response(grouped_data)
 
-        return Response(grouped_data)
 class FeaturedMenuListView(generics.ListAPIView):
     queryset = Menu.objects.all().order_by('priority_index').prefetch_related('images')
     serializer_class = MenuSerializer
@@ -300,9 +299,28 @@ class RestaurantCategoryList(generics.ListAPIView):
     permission_classes = [AllowAny]
 
 class MenuCategoryList(generics.ListAPIView):
-    queryset = Category.objects.filter(category_type='menu').order_by('priority_index')
     serializer_class = CategorySerializer
     permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        """
+        Return categories based on user type:
+        - If admin or restaurant owner, return categories tied to their restaurant or global categories.
+        - Otherwise, return all global categories.
+        """
+        user = self.request.user
+
+        # Base queryset: menu categories ordered by priority index
+        queryset = Category.objects.filter(category_type='menu').order_by('priority_index')
+
+        if user.is_authenticated and hasattr(user, 'profile') and user.profile.type_of_user in ['admin', 'restaurant_owner']:
+            # Categories tied to the user's restaurant or global categories
+            return queryset.filter(
+                Q(restaurant__owner=user) | Q(restaurant__isnull=True)
+            )
+
+        # For other users or unauthenticated users, return global categories only
+        return queryset.filter(restaurant__isnull=True)
 
 class CategoryViewSet(viewsets.ModelViewSet):
     """
