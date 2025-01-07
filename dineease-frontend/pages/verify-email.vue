@@ -95,9 +95,11 @@ const onBackspace = (index) => {
 const handleResend = async () => {
   try {
     isLoading.value = true
-    resendTimeout.value = 30 // Reset countdown
+    resendTimeout.value = 30
+    code.value = ['', '', '', '', '', '']
+    errorMessage.value = ''
 
-    const email = localStorage.getItem('registeredEmail') // Get email from localStorage
+    const email = localStorage.getItem('registeredEmail')
 
     if (!email) {
       errorMessage.value = 'Email not found. Please register again.'
