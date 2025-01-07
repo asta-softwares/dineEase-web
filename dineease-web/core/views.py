@@ -51,6 +51,8 @@ from .serializers import (
 )
 from .utils import send_confirmation_email
 from collections import defaultdict
+from rest_framework.filters import SearchFilter
+from .filters import RestaurantFilter
 
 from google.oauth2.id_token import verify_oauth2_token
 from google.auth.transport.requests import Request
@@ -59,6 +61,10 @@ class RestaurantViewSet(viewsets.ModelViewSet):
     serializer_class = RestaurantSerializer
     queryset = Restaurant.objects.all()
     permission_classes = [AllowAny]
+
+    # Enable filtering and searching
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_class = RestaurantFilter
 
     def get_queryset(self):
         user = self.request.user
@@ -71,9 +77,6 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         if user.is_authenticated and hasattr(user, 'profile') and user.profile.coordinates:
             user_location = user.profile.coordinates
             queryset = queryset.annotate(distance=Distance('coordinates', user_location))
-
-        # Apply search filters
-        queryset = self.apply_search_filters(queryset)
 
         # Handle specific cases for different user types
         if user.is_authenticated:
@@ -97,34 +100,6 @@ class RestaurantViewSet(viewsets.ModelViewSet):
             prefetch_options.append('promos')
 
         return queryset.prefetch_related(*prefetch_options)
-
-    def apply_search_filters(self, queryset):
-        """Apply search filters based on query parameters."""
-        name_query = self.request.query_params.get('name')
-        categories_query = self.request.query_params.get('categories')
-        service_type_query = self.request.query_params.get('service_type')
-
-        # Filter by name
-        if name_query:
-            queryset = queryset.filter(name__icontains=name_query)
-
-        # Filter by categories
-        if categories_query:
-            try:
-                category_ids = [int(cat_id) for cat_id in categories_query.split(',')]
-                queryset = queryset.filter(categories__id__in=category_ids).distinct()
-            except ValueError:
-                pass
-
-        if service_type_query:
-            if service_type_query == 'dine-in':
-                queryset = queryset.filter(service_type__in=['dine-in', 'both'])
-            elif service_type_query == 'takeout':
-                queryset = queryset.filter(service_type__in=['takeout', 'both'])
-            else:
-                queryset = queryset.filter(service_type=service_type_query)
-
-        return queryset
 
     def get_serializer_context(self):
         context = super().get_serializer_context()

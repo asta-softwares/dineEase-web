@@ -16,6 +16,7 @@ from django.conf import settings
 stripe.api_key = settings.STRIPE_SECRET_KEY
 from .filters import OrderFilter
 from django_filters.rest_framework import DjangoFilterBackend
+from .utils import send_push_notification
 
 stripe_status_mapping = {
     'requires_payment_method': 'pending',
@@ -181,6 +182,20 @@ class CreateOrderView(APIView):
                 }
             )
 
+            # Send push notification
+            if hasattr(customer, 'profile') and customer.profile.notification_token:
+                restaurant_name = order.restaurant.name if order.restaurant else "Unknown Restaurant"
+                title = f"Order Created at {restaurant_name}"
+                message = (
+                    f"Your order at {restaurant_name} has been created successfully and is awaiting approval."
+                )
+                send_push_notification(
+                    customer.profile.notification_token,
+                    title,
+                    message,
+                    data={"order_id": order.id, "status": order.status}
+                )
+
             return Response({
                 "order_id": order.id,
                 "order": OrderSerializer(order).data,
@@ -345,23 +360,26 @@ def create_payment_intent(request):
         if not user.is_authenticated:
             return Response({'error': 'User must be authenticated to create a payment intent.'}, status=status.HTTP_403_FORBIDDEN)
         
-        # Retrieve data from request
-        amount_dollars = float(request.data.get('amount'))
-        amount_cents = int(amount_dollars * 100)  # Convert to cents
+        # Validate and calculate totals using OrderPreviewSerializer
+        serializer = OrderPreviewSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        totals = serializer.calculate_totals()
+        restaurant_payment = totals['restaurant_payment']
+        platform_revenue = totals['platform_revenue']
+        amount_cents = int(totals['total'] * 100)  # Convert total to cents for Stripe
+
+        # Get customer details
         email = user.email
-        restaurant_id = request.data.get('restaurant_id')
-
-        # Validate restaurant
-        restaurant = Restaurant.objects.filter(id=restaurant_id).first()
-        if not restaurant:
-            return Response({'error': 'Invalid restaurant ID.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Retrieve user profile details
         profile = getattr(user, 'profile', None)
         if not profile:
             return Response({'error': 'User profile not found.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get or create customer in Stripe
+        # Get restaurant details
+        restaurant = serializer.validated_data['restaurant']
+
+        # Create or retrieve Stripe customer
         customers = stripe.Customer.list(email=email, limit=1)
         if customers.data:
             customer = customers.data[0]
@@ -380,22 +398,33 @@ def create_payment_intent(request):
             }
             customer = stripe.Customer.create(**customer_data)
 
-        # Create PaymentIntent with additional metadata
+        # Determine payment destination (restaurant's wallet or default)
+        transfer_data = None
+        if restaurant.stripe_account_id:
+            transfer_data = {
+                'destination': restaurant.stripe_account_id,
+                'amount': int(restaurant_payment * 100),  # Convert to cents
+            }
+
+        # Create PaymentIntent
         payment_intent = stripe.PaymentIntent.create(
             customer=customer.id,
             setup_future_usage='off_session',
             amount=amount_cents,
             currency='cad',
+            receipt_email=email,
             metadata={
                 'integration_check': 'accept_a_payment',
                 'user_id': user.id,
                 'user_email': email,
-                'restaurant_id': restaurant_id,
+                'restaurant_id': restaurant.id,
                 'restaurant_name': restaurant.name,
-            }
+                'platform_revenue': str(platform_revenue),  # Include platform revenue in metadata
+            },
+            transfer_data=transfer_data,  # Route payment to the restaurant if stripe_account_id exists
         )
 
-        # Generate ephemeral key
+        # Generate ephemeral key for client-side operations
         ephemeral_key = stripe.EphemeralKey.create(
             customer=customer.id,
             stripe_version='2022-11-15',
@@ -405,12 +434,15 @@ def create_payment_intent(request):
             'clientSecret': payment_intent.client_secret,
             'customerId': customer.id,
             'ephemeralKey': ephemeral_key.secret,
+            'totals': totals,  # Return calculated totals for client reference
         }, status=status.HTTP_200_OK)
-    
+
     except stripe.error.StripeError as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except (ValueError, TypeError) as e:
         return Response({'error': 'Invalid amount provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 @api_view(['GET'])
 def get_payment_methods(request):
