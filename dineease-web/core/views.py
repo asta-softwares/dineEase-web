@@ -18,6 +18,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from django.db.models import Q, Prefetch, F, Count
 from django.utils.timezone import now
+from datetime import timedelta
 from django.db import IntegrityError
 from django.contrib.auth.models import User
 from django.contrib.auth import update_session_auth_hash
@@ -358,23 +359,28 @@ class VerifyCodeView(APIView):
             return Response({"detail": "Email and code are required."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Find user by email
             user = User.objects.get(email=email)
 
-            # Check if the provided code matches the user's verification code
-            if user.verification_code.code == code:
-                # Mark the user as verified or activate the account
+            verification_code = VerificationCode.objects.filter(
+                user=user, 
+                created_at__gte=now() - timedelta(minutes=30)
+            ).order_by('-created_at').first()
+
+            if not verification_code:
+                return Response({"detail": "No valid verification code found for this user. Please request for a new code."}, status=status.HTTP_404_NOT_FOUND)
+
+            if verification_code.code == code:
                 user.is_active = True
                 user.save()
+
+                verification_code.delete()
+
                 return Response({"detail": "Email confirmed successfully."}, status=status.HTTP_200_OK)
-            
+
             return Response({"detail": "Invalid code."}, status=status.HTTP_400_BAD_REQUEST)
 
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        except AttributeError:
-            return Response({"detail": "Verification code not found for this user."}, status=status.HTTP_400_BAD_REQUEST)
         
 class ResendEmailView(APIView):
     permission_classes = [AllowAny]
@@ -388,7 +394,6 @@ class ResendEmailView(APIView):
             # Generate a new code
             verification.generate_code()
 
-            # Resend the confirmation email
             send_confirmation_email(user, verification.code)
 
             return Response({"detail": "Verification code resent."}, status=status.HTTP_200_OK)

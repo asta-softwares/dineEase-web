@@ -10,6 +10,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.utils.text import slugify
 import random
+from django.utils.timezone import now
 
 class Category(models.Model):
     CATEGORY_TYPES = (
@@ -267,4 +268,5 @@ class VerificationCode(models.Model):
     def generate_code(self):
         """Generate a random 6-digit code."""
         self.code = str(random.randint(100000, 999999))
+        self.created_at = now()
         self.save()

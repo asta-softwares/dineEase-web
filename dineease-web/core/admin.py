@@ -116,4 +116,10 @@ class CustomUserAdmin(UserAdmin):
 # Re-register UserAdmin
 admin.site.unregister(User)
 admin.site.register(User, CustomUserAdmin)
-admin.site.register(VerificationCode)
+@admin.register(VerificationCode)
+class VerificationCodeAdmin(admin.ModelAdmin):
+    list_display = ('user', 'code', 'created_at')
+
+    # Optional: Add filters and search
+    list_filter = ('created_at',)
+    search_fields = ('user__email', 'code')
