@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import UniqueConstraint
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -270,3 +271,37 @@ class VerificationCode(models.Model):
         self.code = str(random.randint(100000, 999999))
         self.created_at = now()
         self.save()
+
+class Favorite(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='favorites'
+    )
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='favorited_by'
+    )
+    menu = models.ForeignKey(
+        Menu,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='favorited_by'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(fields=['user', 'restaurant', 'menu'], name='unique_favorite')
+        ]
+
+    def __str__(self):
+        if self.restaurant:
+            return f"Favorite: {self.user} -> Restaurant: {self.restaurant.name}"
+        if self.menu:
+            return f"Favorite: {self.user} -> Menu: {self.menu.name}"
+        return "Favorite without a target"

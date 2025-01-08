@@ -10,6 +10,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -31,7 +32,8 @@ from .models import (
     Menu,
     RestaurantImage,
     ExpiringToken,
-    VerificationCode
+    VerificationCode,
+    Favorite
 )
 from .serializers import (
     RestaurantMiniSerializer,
@@ -49,6 +51,7 @@ from .serializers import (
     RestaurantSearchSerializer,
     PromoSearchSerializer,
     MenuSearchSerializer,
+    FavoriteSerializer
 )
 from .utils import send_confirmation_email
 from collections import defaultdict
@@ -58,6 +61,11 @@ from .filters import RestaurantFilter
 from google.oauth2.id_token import verify_oauth2_token
 from google.auth.transport.requests import Request
 
+class RestaurantPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 50 
+
 class RestaurantViewSet(viewsets.ModelViewSet):
     serializer_class = RestaurantSerializer
     queryset = Restaurant.objects.all()
@@ -66,6 +74,7 @@ class RestaurantViewSet(viewsets.ModelViewSet):
     # Enable filtering and searching
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_class = RestaurantFilter
+    pagination_class = RestaurantPagination
 
     def get_queryset(self):
         user = self.request.user
@@ -613,3 +622,27 @@ class SearchView(APIView):
         results = sorted(results, key=lambda x: x['name'])
 
         return Response(results, status=status.HTTP_200_OK)
+    
+class FavoriteViewSet(viewsets.ModelViewSet):
+    serializer_class = FavoriteSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Favorite.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=['get'], url_path='restaurants')
+    def favorite_restaurants(self, request):
+        # Filter only favorite restaurants
+        favorites = self.get_queryset().filter(restaurant__isnull=False)
+        serializer = self.get_serializer(favorites, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='menus')
+    def favorite_menus(self, request):
+        # Filter only favorite menu items
+        favorites = self.get_queryset().filter(menu__isnull=False)
+        serializer = self.get_serializer(favorites, many=True)
+        return Response(serializer.data)

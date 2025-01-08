@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Restaurant, Promo, Menu, RestaurantImage, AddonCategory, AddonOption, Category, UserProfile, VerificationCode
+from .models import Restaurant, Promo, Menu, RestaurantImage, AddonCategory, AddonOption, Category, UserProfile, VerificationCode, Favorite
 from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.gis.db import models as geo_models
@@ -103,8 +103,14 @@ class UserProfileInline(admin.StackedInline):
     can_delete = False
     verbose_name_plural = 'User Profile'
 
+class FavoriteInline(admin.TabularInline):
+    model = Favorite
+    fields = ['restaurant', 'menu', 'created_at']
+    readonly_fields = ['created_at'] 
+    extra = 0 
+
 class CustomUserAdmin(UserAdmin):
-    inlines = (UserProfileInline,)
+    inlines = (UserProfileInline, FavoriteInline)
 
     # Display email and type of user in user list
     list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'get_type_of_user')

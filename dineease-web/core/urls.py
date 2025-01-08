@@ -19,7 +19,8 @@ from .views import (
     ResendEmailView,
     GoogleAuthView,
     SearchView,
-    CategoryViewSet
+    CategoryViewSet,
+    FavoriteViewSet
 )
 from rest_framework_simplejwt.views import (
     TokenRefreshView,
@@ -32,6 +33,7 @@ router.register(r'restaurants', RestaurantViewSet)
 router.register(r'promos', PromoViewSet)
 router.register(r'menus', MenuViewSet)
 router.register(r'categories', CategoryViewSet)
+router.register(r'favorites', FavoriteViewSet, basename='favorite')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Restaurant, Promo, Menu, UserProfile, RestaurantImage, AddonCategory, AddonOption, Category, VerificationCode
+from .models import Restaurant, Promo, Menu, UserProfile, RestaurantImage, AddonCategory, AddonOption, Category, VerificationCode, Favorite
 from django.core.exceptions import ValidationError
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.exceptions import AuthenticationFailed
@@ -394,10 +394,11 @@ class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer()
     active_restaurant = serializers.SerializerMethodField()
     has_pending_orders = serializers.SerializerMethodField()
+    favorites = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile', 'active_restaurant', 'has_pending_orders']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile', 'active_restaurant', 'has_pending_orders', 'favorites']
 
     def get_active_restaurant(self, obj):
         active_restaurant = obj.restaurants.exclude(status='archived').first()
@@ -412,6 +413,28 @@ class UserSerializer(serializers.ModelSerializer):
     def get_has_pending_orders(self, obj):
         # Check if the user has any pending orders
         return obj.orders.filter(status='pending').exists()
+    
+    def get_favorites(self, obj):
+        # Get the user's favorite restaurants and menus
+        favorites = Favorite.objects.filter(user=obj)
+        restaurant_favorites = favorites.filter(restaurant__isnull=False)
+        menu_favorites = favorites.filter(menu__isnull=False)
+
+        # Serialize the favorite restaurants and menus
+        return {
+            'restaurants': [
+                {
+                    'id': fav.restaurant.id,
+                    'name': fav.restaurant.name,
+                } for fav in restaurant_favorites
+            ],
+            'menus': [
+                {
+                    'id': fav.menu.id,
+                    'name': fav.menu.name,
+                } for fav in menu_favorites
+            ]
+        }
 
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('profile', {})
@@ -482,3 +505,23 @@ class MenuSearchSerializer(serializers.ModelSerializer):
 
     def get_type(self, obj):
         return 'menu'
+    
+class FavoriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Favorite
+        fields = ['id', 'user', 'restaurant', 'menu',]
+        read_only_fields = ['user', 'created_at']
+        extra_kwargs = {
+            'restaurant': {'required': False, 'allow_null': True},
+            'menu': {'required': False, 'allow_null': True},
+        }
+
+    def validate(self, data):
+        """
+        Ensure that either restaurant or menu is provided, but not both or neither.
+        """
+        if not data.get('restaurant') and not data.get('menu'):
+            raise serializers.ValidationError("Either 'restaurant' or 'menu' must be provided.")
+        if data.get('restaurant') and data.get('menu'):
+            raise serializers.ValidationError("You can only favorite either a 'restaurant' or a 'menu', not both.")
+        return data

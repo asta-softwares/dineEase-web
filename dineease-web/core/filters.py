@@ -41,14 +41,17 @@ class RestaurantFilter(django_filters.FilterSet):
         
     def filter_service_type(self, queryset, name, value):
         """
-        Filter restaurants by service type. If 'both' is specified,
-        include restaurants with 'dine-in' or 'takeout'.
+        Filter restaurants by service type. If 'both' is specified, include restaurants
+        with 'dine-in', 'takeout', or 'both'. If filtering by 'dine-in' or 'takeout',
+        also include restaurants with 'both'.
         """
         if value == 'both':
             return queryset.filter(
                 Q(service_type='dine-in') | Q(service_type='takeout') | Q(service_type='both')
             )
-        return queryset.filter(service_type=value)
+        return queryset.filter(
+            Q(service_type=value) | Q(service_type='both')
+    )
     
     def filter_province(self, queryset, name, value):
         """
