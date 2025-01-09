@@ -12,6 +12,7 @@ from django.conf import settings
 from django.utils.text import slugify
 import random
 from django.utils.timezone import now
+from decimal import Decimal
 
 class Category(models.Model):
     CATEGORY_TYPES = (
@@ -305,3 +306,54 @@ class Favorite(models.Model):
         if self.menu:
             return f"Favorite: {self.user} -> Menu: {self.menu.name}"
         return "Favorite without a target"
+
+class Cart(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='carts'
+    )
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='carts'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('user', 'restaurant')
+        
+    def __str__(self):
+        return f"Cart ({self.user.username}) - {self.restaurant.name if self.restaurant else 'Multiple Restaurants'}"
+
+    def calculate_total(self):
+        """
+        Calculate the total cost of all items in the cart.
+        """
+        return sum(item.total_cost() for item in self.items.all())
+    
+class CartItem(models.Model):
+    cart = models.ForeignKey(
+        Cart,
+        on_delete=models.CASCADE,
+        related_name='items'
+    )
+    menu = models.ForeignKey(
+        Menu,
+        on_delete=models.CASCADE,
+        related_name='cart_items'
+    )
+    quantity = models.PositiveIntegerField(default=1)
+    special_instructions = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.menu.name} x {self.quantity} in Cart ({self.cart.user.username})"
+
+    def total_cost(self):
+        """
+        Calculate the total cost for this cart item.
+        """
+        return Decimal(self.menu.cost) * self.quantity

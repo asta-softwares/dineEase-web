@@ -33,7 +33,9 @@ from .models import (
     RestaurantImage,
     ExpiringToken,
     VerificationCode,
-    Favorite
+    Favorite,
+    Cart,
+    CartItem
 )
 from .serializers import (
     RestaurantMiniSerializer,
@@ -51,7 +53,9 @@ from .serializers import (
     RestaurantSearchSerializer,
     PromoSearchSerializer,
     MenuSearchSerializer,
-    FavoriteSerializer
+    FavoriteSerializer,
+    CartItemSerializer,
+    CartSerializer,
 )
 from .utils import send_confirmation_email
 from collections import defaultdict
@@ -282,7 +286,6 @@ class FeaturedRestaurantListView(APIView):
             .prefetch_related('images')
         )
 
-        # Serialize data, passing the request context
         serializer = RestaurantSerializer(queryset, many=True, context={'request': request})
 
         # Group restaurants dynamically by the specified field
@@ -479,10 +482,9 @@ class UserDetailView(APIView):
 
     def get(self, request):
         if request.user.is_authenticated:
-            serializer = UserSerializer(request.user)
+            serializer = UserSerializer(request.user, context={'request': request})
             return Response(serializer.data)
         return Response({"message": "User not authenticated"}, status=401)
-
 class UserUpdateView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -646,3 +648,119 @@ class FavoriteViewSet(viewsets.ModelViewSet):
         favorites = self.get_queryset().filter(menu__isnull=False)
         serializer = self.get_serializer(favorites, many=True)
         return Response(serializer.data)
+    
+
+# CART VIEWSETS
+class CartViewSet(viewsets.ModelViewSet):
+    queryset = Cart.objects.all()
+    serializer_class = CartSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        Return only the cart for the logged-in user.
+        """
+        return Cart.objects.filter(user=self.request.user)
+
+    def handle_cart_items(self, cart, items_data):
+        """
+        Handle adding or updating cart items.
+        """
+        for item_data in items_data:
+            menu = item_data['menu']
+            quantity = item_data['quantity']
+            special_instructions = item_data.get('special_instructions', '')
+
+            # Check if the menu item already exists in the cart
+            existing_item = cart.items.filter(menu=menu).first()
+            if existing_item:
+                # Update the quantity if the item already exists
+                existing_item.quantity = quantity
+                existing_item.save()
+            else:
+                # Create a new cart item
+                CartItem.objects.create(
+                    cart=cart,
+                    menu=menu,
+                    quantity=quantity,
+                    special_instructions=special_instructions
+                )
+
+    def perform_create(self, serializer):
+        """
+        Handle cart creation or merging items if the cart exists.
+        """
+        user = self.request.user
+        restaurant = serializer.validated_data.get('restaurant')
+        items_data = serializer.validated_data.pop('items', [])
+
+        # Check if a cart already exists for the user
+        existing_cart = Cart.objects.filter(user=user).first()
+
+        if existing_cart:
+            if existing_cart.restaurant == restaurant:
+                # Append items to the existing cart
+                self.handle_cart_items(existing_cart, items_data)
+                return
+            else:
+                # Delete the existing cart if the restaurant differs
+                existing_cart.delete()
+
+        # Create a new cart and add items
+        cart = serializer.save(user=user)
+        self.handle_cart_items(cart, items_data)
+
+    def perform_update(self, serializer):
+        """
+        Handle cart updates: modify or append items.
+        """
+        items_data = serializer.validated_data.pop('items', [])
+        cart = self.get_object()
+
+        # Append or update items in the cart
+        self.handle_cart_items(cart, items_data)
+
+        # Save other cart updates
+        serializer.save()
+
+    @action(detail=True, methods=['delete'], url_path='remove-item')
+    def remove_item(self, request, pk=None):
+        """
+        Remove an item from the cart.
+        """
+        cart = self.get_object()
+        item_id = request.data.get('item_id')
+
+        if not item_id:
+            return Response({"detail": "item_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the item exists in the cart
+        item = cart.items.filter(id=item_id).first()
+        if not item:
+            return Response({"detail": "Item not found in the cart."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Remove the item
+        item.delete()
+        return Response({"detail": "Item removed successfully."}, status=status.HTTP_204_NO_CONTENT)
+
+class CartItemViewSet(viewsets.ModelViewSet):
+    queryset = CartItem.objects.all()
+    serializer_class = CartItemSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        Return the cart items for the user's active cart.
+        """
+        cart_id = self.request.query_params.get('cart_id')
+        if cart_id:
+            return CartItem.objects.filter(cart__id=cart_id, cart__user=self.request.user)
+        return CartItem.objects.none()
+
+    def perform_create(self, serializer):
+        """
+        Automatically associate the cart item with the correct cart.
+        """
+        cart_id = self.request.data.get('cart_id')
+        cart = Cart.objects.get(id=cart_id, user=self.request.user)
+        serializer.save(cart=cart)

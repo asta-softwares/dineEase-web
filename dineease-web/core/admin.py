@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Restaurant, Promo, Menu, RestaurantImage, AddonCategory, AddonOption, Category, UserProfile, VerificationCode, Favorite
+from .models import Restaurant, Promo, Menu, RestaurantImage, AddonCategory, AddonOption, Category, UserProfile, VerificationCode, Favorite, Cart, CartItem
 from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.gis.db import models as geo_models
@@ -129,3 +129,26 @@ class VerificationCodeAdmin(admin.ModelAdmin):
     # Optional: Add filters and search
     list_filter = ('created_at',)
     search_fields = ('user__email', 'code')
+
+class CartItemInline(admin.TabularInline):
+    """
+    Inline display for CartItems within the Cart admin interface.
+    """
+    model = CartItem
+    extra = 0  # No extra empty forms
+    readonly_fields = ('menu', 'quantity', 'special_instructions')
+
+class CartAdmin(admin.ModelAdmin):
+    """
+    Custom admin interface for Cart.
+    """
+    list_display = ('id', 'user', 'restaurant', 'total_items', 'created_at', 'updated_at')
+    list_filter = ('restaurant', 'created_at')
+    search_fields = ('user__username', 'restaurant__name')
+    inlines = [CartItemInline]
+
+    @admin.display(description='Total Items')
+    def total_items(self, obj):
+        return obj.items.count()
+
+admin.site.register(Cart, CartAdmin)

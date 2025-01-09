@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Restaurant, Promo, Menu, UserProfile, RestaurantImage, AddonCategory, AddonOption, Category, VerificationCode, Favorite
+from .models import Restaurant, Promo, Menu, UserProfile, RestaurantImage, AddonCategory, AddonOption, Category, VerificationCode, Favorite, Cart, CartItem
 from django.core.exceptions import ValidationError
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.exceptions import AuthenticationFailed
@@ -83,15 +83,33 @@ class MenuSerializer(serializers.ModelSerializer):
     restaurant = serializers.PrimaryKeyRelatedField(queryset=Restaurant.objects.all(), write_only=True)
     restaurant_details = RestaurantMiniSerializer(source='restaurant', read_only=True)
     promos = serializers.PrimaryKeyRelatedField(queryset=Promo.objects.all(), many=True, required=False)
+    is_favorite = serializers.SerializerMethodField()
 
     class Meta:
         model = Menu
         fields = [
             'id', 'name', 'description', 'restaurant', 'restaurant_details', 'cost',
             'category', 'status', 'image', 'priority_index', 'addon_categories',
-            'images', 'discounted_cost', 'promos'
+            'is_favorite', 'images', 'discounted_cost', 'promos'
         ]
 
+    def __init__(self, *args, **kwargs):
+        context = kwargs.get('context', {})
+        user = context.get('request').user if context.get('request') else None
+
+        super().__init__(*args, **kwargs)
+        if not user or not user.is_authenticated:
+            self.fields.pop('is_favorite', None)
+
+    def get_is_favorite(self, obj):
+        """
+        Check if the menu item is favorited by the current user.
+        """
+        user = self.context['request'].user
+        if user.is_authenticated:
+            return Favorite.objects.filter(user=user, menu=obj).exists()
+        return False
+    
     def get_discounted_cost(self, obj):
         """
         Calculate the discounted cost if a promo is applied to the menu.
@@ -132,13 +150,14 @@ class MenuSerializer(serializers.ModelSerializer):
 
 class RestaurantSerializer(serializers.ModelSerializer):
     promos = PromoSerializer(many=True, read_only=True)
-    menus = MenuSerializer(many=True, read_only=True)
+    menus = serializers.SerializerMethodField()
     images = RestaurantImageSerializer(many=True, read_only=True)
     categories = CategorySerializer(many=True, read_only=True)
     coordinates = serializers.SerializerMethodField()
     distance = serializers.SerializerMethodField()
     is_open = serializers.SerializerMethodField()
     operating_hours = serializers.SerializerMethodField()
+    is_favorite = serializers.SerializerMethodField()
 
     class Meta:
         model = Restaurant
@@ -146,7 +165,7 @@ class RestaurantSerializer(serializers.ModelSerializer):
             'id', 'name', 'categories', 'service_type', 'image', 'city', 'province', 'email',
             'operating_hours', 'location', 'coordinates', 'distance', 'is_open',
             'priority_index', 'telephone', 'ratings', 'description', 'status', 'owner', 
-            'social_media_links', 'stripe_account_id',
+            'social_media_links', 'stripe_account_id', 'is_favorite',
             'promos', 'menus', 'images',
         ]
 
@@ -160,10 +179,31 @@ class RestaurantSerializer(serializers.ModelSerializer):
         if not user or not user.is_authenticated or not getattr(user.profile, 'coordinates', None):
             self.fields.pop('distance', None)
 
+        # If the user is not authenticated, remove the 'is_favorite' field
+        if not user or not user.is_authenticated:
+            self.fields.pop('is_favorite', None)
+
+    def get_is_favorite(self, obj):
+        """
+        Check if the restaurant is favorited by the current user.
+        """
+        user = self.context['request'].user
+        if user.is_authenticated:
+            return Favorite.objects.filter(user=user, restaurant=obj).exists()
+        return False
+    
     def get_coordinates(self, obj):
         if obj.coordinates and isinstance(obj.coordinates, Point):
             return [obj.coordinates.x, obj.coordinates.y]
         return None
+    
+    def get_menus(self, obj):
+        """
+        Use MenuSerializer and explicitly pass context to include is_favorite field.
+        """
+        request = self.context.get('request')
+        menus = obj.menus.all()
+        return MenuSerializer(menus, many=True, context={'request': request}).data
 
     def get_distance(self, obj):
         if hasattr(obj, 'distance') and obj.distance:
@@ -395,10 +435,15 @@ class UserSerializer(serializers.ModelSerializer):
     active_restaurant = serializers.SerializerMethodField()
     has_pending_orders = serializers.SerializerMethodField()
     favorites = serializers.SerializerMethodField()
+    active_cart = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile', 'active_restaurant', 'has_pending_orders', 'favorites']
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name', 
+            'profile', 'active_restaurant', 'has_pending_orders', 
+            'favorites', 'active_cart'
+        ]
 
     def get_active_restaurant(self, obj):
         active_restaurant = obj.restaurants.exclude(status='archived').first()
@@ -410,29 +455,50 @@ class UserSerializer(serializers.ModelSerializer):
             }
         return None
 
+    def get_active_cart(self, obj):
+        """
+        Retrieve the user's active cart and its items.
+        """
+        active_cart = obj.carts.first()
+        if active_cart:
+            restaurant_data = RestaurantMiniSerializer(
+                active_cart.restaurant, context=self.context
+            ).data
+
+            items_data = [
+                {
+                    'id': item.id,
+                    'menu': MenuMiniSerializer(item.menu, context=self.context).data,
+                    'quantity': item.quantity,
+                    'special_instructions': item.special_instructions
+                } for item in active_cart.items.all()
+            ]
+
+            return {
+                'id': active_cart.id,
+                'restaurant': restaurant_data,
+                'items': items_data,
+                'created_at': active_cart.created_at,
+                'updated_at': active_cart.updated_at
+            }
+        return None
+    
     def get_has_pending_orders(self, obj):
-        # Check if the user has any pending orders
         return obj.orders.filter(status='pending').exists()
     
     def get_favorites(self, obj):
-        # Get the user's favorite restaurants and menus
         favorites = Favorite.objects.filter(user=obj)
         restaurant_favorites = favorites.filter(restaurant__isnull=False)
         menu_favorites = favorites.filter(menu__isnull=False)
 
-        # Serialize the favorite restaurants and menus
         return {
             'restaurants': [
-                {
-                    'id': fav.restaurant.id,
-                    'name': fav.restaurant.name,
-                } for fav in restaurant_favorites
+                RestaurantMiniSerializer(fav.restaurant, context=self.context).data
+                for fav in restaurant_favorites
             ],
             'menus': [
-                {
-                    'id': fav.menu.id,
-                    'name': fav.menu.name,
-                } for fav in menu_favorites
+                MenuMiniSerializer(fav.menu, context=self.context).data
+                for fav in menu_favorites
             ]
         }
 
@@ -525,3 +591,33 @@ class FavoriteSerializer(serializers.ModelSerializer):
         if data.get('restaurant') and data.get('menu'):
             raise serializers.ValidationError("You can only favorite either a 'restaurant' or a 'menu', not both.")
         return data
+    
+class CartItemSerializer(serializers.ModelSerializer):
+    menu_name = serializers.ReadOnlyField(source='menu.name')
+    menu_cost = serializers.ReadOnlyField(source='menu.cost')
+
+    class Meta:
+        model = CartItem
+        fields = ['id', 'menu', 'menu_name', 'menu_cost', 'quantity', 'special_instructions', 'total_cost']
+
+class CartSerializer(serializers.ModelSerializer):
+    items = CartItemSerializer(many=True, required=False)
+    total_cost = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Cart
+        fields = ['id', 'user', 'restaurant', 'created_at', 'updated_at', 'items', 'total_cost']
+        read_only_fields = ['user']
+
+    def get_total_cost(self, obj):
+        return obj.calculate_total()
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items', [])
+        cart = Cart.objects.create(**validated_data)
+
+        # Create CartItem objects
+        for item_data in items_data:
+            CartItem.objects.create(cart=cart, **item_data)
+
+        return cart
