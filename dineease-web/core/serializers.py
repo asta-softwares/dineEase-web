@@ -493,11 +493,17 @@ class UserSerializer(serializers.ModelSerializer):
 
         return {
             'restaurants': [
-                RestaurantMiniSerializer(fav.restaurant, context=self.context).data
+                {
+                    'favorite_id': fav.id,
+                    **RestaurantMiniSerializer(fav.restaurant, context=self.context).data
+                }
                 for fav in restaurant_favorites
             ],
             'menus': [
-                MenuMiniSerializer(fav.menu, context=self.context).data
+                {
+                    'favorite_id': fav.id,
+                    **MenuMiniSerializer(fav.menu, context=self.context).data
+                }
                 for fav in menu_favorites
             ]
         }

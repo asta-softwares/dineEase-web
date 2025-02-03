@@ -729,7 +729,7 @@ class CartViewSet(viewsets.ModelViewSet):
         Remove an item from the cart.
         """
         cart = self.get_object()
-        item_id = request.data.get('item_id')
+        item_id = request.query_params.get('item_id')
 
         if not item_id:
             return Response({"detail": "item_id is required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -741,7 +741,7 @@ class CartViewSet(viewsets.ModelViewSet):
 
         # Remove the item
         item.delete()
-        return Response({"detail": "Item removed successfully."}, status=status.HTTP_204_NO_CONTENT)
+        return Response({"detail": "Item removed successfully."}, status=status.HTTP_200_OK)
 
 class CartItemViewSet(viewsets.ModelViewSet):
     queryset = CartItem.objects.all()

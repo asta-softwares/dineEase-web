@@ -103,6 +103,13 @@ class UserProfileInline(admin.StackedInline):
     can_delete = False
     verbose_name_plural = 'User Profile'
 
+@admin.register(Favorite)
+class FavoriteAdmin(admin.ModelAdmin):
+    list_display = ('user', 'restaurant', 'menu', 'created_at')
+    list_filter = ('created_at', 'restaurant', 'menu')
+    search_fields = ('user__username', 'restaurant__name', 'menu__name')
+    ordering = ('-created_at',)
+    
 class FavoriteInline(admin.TabularInline):
     model = Favorite
     fields = ['restaurant', 'menu', 'created_at']
