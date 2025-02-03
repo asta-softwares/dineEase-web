@@ -649,6 +649,19 @@ class FavoriteViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(favorites, many=True)
         return Response(serializer.data)
     
+    @action(detail=True, methods=['delete'], url_path='remove')
+    def remove_favorite(self, request, pk=None):
+        """
+        Remove a favorite item by ID.
+        """
+        favorite = self.get_queryset().filter(pk=pk).first()
+
+        if not favorite:
+            return Response({"detail": "Favorite item not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        favorite.delete()
+        return Response({"detail": "Favorite removed successfully."}, status=status.HTTP_200_OK)
+    
 
 # CART VIEWSETS
 class CartViewSet(viewsets.ModelViewSet):
