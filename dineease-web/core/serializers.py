@@ -104,10 +104,12 @@ class MenuSerializer(serializers.ModelSerializer):
     def get_is_favorite(self, obj):
         """
         Check if the menu item is favorited by the current user.
+        If favorited, return the favorite ID. Otherwise, return False.
         """
         user = self.context['request'].user
         if user.is_authenticated:
-            return Favorite.objects.filter(user=user, menu=obj).exists()
+            favorite = Favorite.objects.filter(user=user, menu=obj).first()
+            return favorite.id if favorite else False
         return False
     
     def get_discounted_cost(self, obj):
@@ -186,10 +188,12 @@ class RestaurantSerializer(serializers.ModelSerializer):
     def get_is_favorite(self, obj):
         """
         Check if the restaurant is favorited by the current user.
+        If favorited, return the favorite ID. Otherwise, return False.
         """
         user = self.context['request'].user
         if user.is_authenticated:
-            return Favorite.objects.filter(user=user, restaurant=obj).exists()
+            favorite = Favorite.objects.filter(user=user, restaurant=obj).first()
+            return favorite.id if favorite else False
         return False
     
     def get_coordinates(self, obj):

@@ -8,7 +8,6 @@ export function useFavoritesEndpoints() {
     'Content-Type': 'application/json',
   };
 
-  // Get all favorite items
   const getFavorites = async () => {
     const { data, error } = await useFetch(`${baseUrl}favorites/`, {
       method: 'GET',
@@ -18,7 +17,6 @@ export function useFavoritesEndpoints() {
     return data.value;
   };
 
-  // Get favorite restaurants
   const getFavoriteRestaurants = async () => {
     const { data, error } = await useFetch(`${baseUrl}favorites/restaurants/`, {
       method: 'GET',
@@ -28,7 +26,6 @@ export function useFavoritesEndpoints() {
     return data.value;
   };
 
-  // Get favorite menus
   const getFavoriteMenus = async () => {
     const { data, error } = await useFetch(`${baseUrl}favorites/menus/`, {
       method: 'GET',
@@ -38,7 +35,6 @@ export function useFavoritesEndpoints() {
     return data.value;
   };
 
-  // Add an item to favorites (restaurant or menu)
   const addFavorite = async (favoriteData) => {
     const { data, error } = await useFetch(`${baseUrl}favorites/`, {
       method: 'POST',
@@ -49,7 +45,6 @@ export function useFavoritesEndpoints() {
     return data.value;
   };
 
-  // Remove a favorite by ID (recommended method)
   const deleteFavoriteById = async (favoriteId) => {
     const url = `${baseUrl}favorites/${favoriteId}/remove/`;
     const { data, error } = await useFetch(url, {
@@ -60,7 +55,6 @@ export function useFavoritesEndpoints() {
     return data.value;
   };
 
-  // Remove a favorite by restaurant_id or menu_id
   const deleteFavoriteByReference = async ({ restaurantId, menuId }) => {
     let query = '';
     if (restaurantId) query = `restaurant_id=${restaurantId}`;
