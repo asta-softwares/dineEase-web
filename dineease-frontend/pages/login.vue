@@ -46,6 +46,7 @@
           Don't have an account? 
           <span class="text-blue-500 cursor-pointer" @click="goToRegister">Register</span>
         </div>
+        <a class="text-blue-500 cursor-pointer text-sm text-cente" href="/find-account">Forgot Password?</a>
       </CardFooter>
     </Card>
   </div>

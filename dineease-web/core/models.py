@@ -273,6 +273,10 @@ class VerificationCode(models.Model):
         self.created_at = now()
         self.save()
 
+    def is_expired(self):
+        """Check if the code is expired (valid for 10 minutes)."""
+        return (now() - self.created_at) > timedelta(minutes=15)
+
 class Favorite(models.Model):
     user = models.ForeignKey(
         User,

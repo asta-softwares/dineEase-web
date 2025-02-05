@@ -27,6 +27,38 @@ def send_confirmation_email(user, code):
     except Exception as e:
         print(f"Failed to send confirmation email: {e}")
 
+def send_password_reset_email(user, reset_code):
+    """
+    Sends a password reset email with a 6-digit verification code.
+    """
+    subject = "Reset Your Password - DineEase"
+    message = f"""
+    Hello {user.first_name},
+
+    We received a request to reset your password for your DineEase account.
+    Please use the following reset code:
+
+    Reset Code: {reset_code}
+
+    If you did not request this, please ignore this email. 
+
+    This code will expire in a few minutes for security reasons.
+
+    Best,
+    DineEase Support Team
+    """
+
+    from_email = settings.DEFAULT_FROM_EMAIL
+    recipient_list = [user.email]
+
+    try:
+        send_mail(subject, message, from_email, recipient_list)
+    except Exception as e:
+        print(f"Failed to send password reset email: {e}")
+
+    return reset_code
+
+
 def parse_coordinates(coordinates):
     """
     Convert coordinates from string or list to a GeoDjango Point object.

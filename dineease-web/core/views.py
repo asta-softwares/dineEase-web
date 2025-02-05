@@ -57,13 +57,17 @@ from .serializers import (
     CartItemSerializer,
     CartSerializer,
 )
-from .utils import send_confirmation_email
+from .utils import send_confirmation_email, send_password_reset_email
 from collections import defaultdict
 from rest_framework.filters import SearchFilter
 from .filters import RestaurantFilter
 
 from google.oauth2.id_token import verify_oauth2_token
 from google.auth.transport.requests import Request
+
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.crypto import get_random_string
+from django.urls import reverse
 
 class RestaurantPagination(PageNumberPagination):
     page_size = 20
@@ -430,6 +434,127 @@ class ResendEmailView(APIView):
         except (User.DoesNotExist, VerificationCode.DoesNotExist):
             return Response({"detail": "User not found or no verification pending."}, status=status.HTTP_404_NOT_FOUND)
 
+class FindAccountView(APIView):
+    """
+    API to find an account and send a reset code.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        identifier = request.data.get('identifier')
+
+        if not identifier:
+            return Response({"detail": "Email, phone, or username is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = None
+
+        # Find by email
+        if '@' in identifier:
+            user = User.objects.filter(email=identifier).first()
+
+        # Find by phone
+        if not user:
+            profile = UserProfile.objects.filter(phone=identifier).first()
+            user = profile.user if profile else None
+
+        # Find by username
+        if not user:
+            user = User.objects.filter(username=identifier).first()
+
+        if not user:
+            return Response({"detail": "Account not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        verification_code = VerificationCode.objects.create(user=user)
+        verification_code.generate_code()
+
+        # Send verification code via email
+        send_password_reset_email(user, verification_code.code)
+
+        return Response({
+            "detail": "Account found. Reset code sent to your email.",
+            "email": user.email,
+        }, status=status.HTTP_200_OK)
+    
+class ResetPasswordView(APIView):
+    """
+    API to verify reset code and update password.
+    """
+    permission_classes = [AllowAny]
+
+
+    def post(self, request):
+        identifier = request.data.get('identifier')
+        reset_code = request.data.get('code')
+        new_password = request.data.get('new_password')
+
+        if not identifier or not reset_code or not new_password:
+            return Response({"detail": "All fields are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=identifier).first()
+
+        if not user:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Retrieve the verification code from the database
+        verification_code = VerificationCode.objects.filter(user=user, code=reset_code).first()
+
+        if not verification_code:
+            return Response({"detail": "Invalid or expired reset code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if verification_code.is_expired():
+            return Response({"detail": "Reset code has expired. Please request another reset code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update the user's password
+        user.set_password(new_password)
+        user.save()
+
+        verification_code.delete()
+
+        return Response({"detail": "Password reset successful."}, status=status.HTTP_200_OK)
+    
+class ResendResetCodeView(APIView):
+    """
+    API to resend a password reset code.
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        identifier = request.data.get('identifier')
+
+        if not identifier:
+            return Response({"detail": "Email, phone, or username is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = None
+
+        # Find by email
+        if '@' in identifier:
+            user = User.objects.filter(email=identifier).first()
+
+        # Find by phone
+        if not user:
+            profile = UserProfile.objects.filter(phone=identifier).first()
+            user = profile.user if profile else None
+
+        # Find by username
+        if not user:
+            user = User.objects.filter(username=identifier).first()
+
+        if not user:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Delete any existing verification codes for the user
+        VerificationCode.objects.filter(user=user).delete()
+
+        # Generate a new verification code
+        verification_code = VerificationCode.objects.create(user=user)
+        verification_code.generate_code()
+
+        # Send the new reset code via email
+        send_password_reset_email(user, verification_code.code)
+
+        return Response({"detail": "Password reset code has been resent."}, status=status.HTTP_200_OK)
+    
 class LoginView(APIView):
     serializer_class = LoginSerializer
 
